@@ -16,6 +16,13 @@
 
 import {AuthenticationMode} from '../src/authentication-mode.js';
 import {Credentials} from '../src/credentials.js';
+import {debug} from '../src/debug.js';
+
+// Mock the debug function
+jest.mock('../src/debug', () => ({
+    debug: jest.fn(),
+}));
+const mockDebug = debug as jest.MockedFunction<typeof debug>;
 
 describe('Credentials', () => {
     let originalEnv: NodeJS.ProcessEnv;
@@ -31,7 +38,36 @@ describe('Credentials', () => {
         process.env = originalEnv;
     });
 
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
     const authorization = 'authorization';
+
+    describe('constructor and toString', () => {
+        test('should call debug with credential info when creating DI API key credentials', () => {
+            const apikey = 'test-api-key';
+            Credentials.createDiApiKeyCredentials(apikey);
+            
+            expect(mockDebug).toHaveBeenCalledWith('DI API Key(API key: ***)');
+        });
+
+        test('should call debug with credential info when creating Zen API key credentials', () => {
+            const username = 'test-user';
+            const apikey = 'test-api-key';
+            Credentials.createZenApiKeyCredentials(username, apikey);
+            
+            expect(mockDebug).toHaveBeenCalledWith(`Zen API Key(username: ${username}, API key: ***)`);
+        });
+
+        test('should call debug with credential info when creating basic auth credentials', () => {
+            const username = 'test-user';
+            const password = 'test-password';
+            Credentials.createBasicAuthCredentials(username, password);
+            
+            expect(mockDebug).toHaveBeenCalledWith(`Basic Authentication(username: ${username}, password: ***)`);
+        });
+    });
 
     describe('for basic authentication', () => {
         test(`should return '${authorization}' as header key`, () => {

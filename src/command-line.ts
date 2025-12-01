@@ -33,7 +33,8 @@ export class Configuration {
         public version: string,
         public debugEnabled: boolean,
         public deploymentSpaces: string[] = Configuration.defaultDeploymentSpaces(),
-        public decisionServiceIds: string[] | undefined = undefined
+        public decisionServiceIds: string[] | undefined = undefined,
+        public pollInterval: number = Configuration.defaultPollInterval()
     ) {
     }
 
@@ -43,6 +44,10 @@ export class Configuration {
 
     static defaultDeploymentSpaces(): string[] {
         return ['development'];
+    }
+
+    static defaultPollInterval(): number {
+        return 30000; // 30 seconds in milliseconds
     }
 
     isStdioTransport(): boolean {
@@ -168,6 +173,23 @@ function parseDecisionServiceIds(decisionServiceIds: string | undefined): string
     return undefined;
 }
 
+function validatePollInterval(pollInterval: string | undefined): number {
+    debug("POLL_INTERVAL=" + pollInterval);
+    if (pollInterval === undefined) {
+        const defaultPollInterval = Configuration.defaultPollInterval();
+        debug(`The poll interval is not defined. Using '${defaultPollInterval}' milliseconds`);
+        return defaultPollInterval;
+    }
+    const parsedInterval = parseInt(pollInterval, 10);
+    if (isNaN(parsedInterval)) {
+        throw new Error(`Invalid poll interval: '${pollInterval}'. Must be a valid number in milliseconds.`);
+    }
+    if (parsedInterval < 1000) {
+        throw new Error(`Invalid poll interval: '${pollInterval}'. Must be at least 1000 milliseconds (1 second).`);
+    }
+    return parsedInterval;
+}
+
 export function createConfiguration(version: string, cliArguments?: readonly string[]): Configuration {
     const program = new Command();
     program
@@ -184,7 +206,8 @@ export function createConfiguration(version: string, cliArguments?: readonly str
         .option('--basic-password <string>', "Password for the basic authentication")
         .option('--transport <transport>', "Transport mode: 'stdio' or 'http'")
         .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
-        .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools');
+        .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
+        .option('--poll-interval <milliseconds>', 'Interval in milliseconds for polling tool changes (default: 30000, minimum: 1000)');
 
     program.parse(cliArguments);
 
@@ -198,7 +221,8 @@ export function createConfiguration(version: string, cliArguments?: readonly str
     const url = validateUrl(options.url || process.env.URL);
     const deploymentSpaces = validateDeploymentSpaces(options.deploymentSpaces || process.env.DEPLOYMENT_SPACES);
     const decisionServiceIds = parseDecisionServiceIds(options.decisionServiceIds || process.env.DECISION_SERVICE_IDS);
+    const pollInterval = validatePollInterval(options.pollInterval || process.env.POLL_INTERVAL);
  
     // Create and return configuration object
-    return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds);
+    return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds, pollInterval);
 }
