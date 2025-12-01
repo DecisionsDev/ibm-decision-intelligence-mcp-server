@@ -58,7 +58,7 @@ npx -y di-mcp-server --authentication-mode basic --basic-username <YOUR_USERNAME
 
 Syntax of the command line:
 ```bash
-npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>]
+npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>] [--poll-interval <POLL_INTERVAL>]
 ```
 
 where
@@ -70,7 +70,8 @@ where
 - `RUNTIME_BASE_URL` is the base URL of the decision runtime REST API. For Decision Intelligence, its pattern is: `https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1` where TENANT_NAME is the name of the tenant.
 - `TRANSPORT` (optional) is the transport protocol, either `stdio` (default) or `http`.
 - `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `development`).
-- `DECISION_SERVICE_IDS` (optional) If defined, a comma-separated list of decision service IDs are exposed as tools
+- `DECISION_SERVICE_IDS` (optional) If defined, comma-separated list of decision service ids to be exposed as tools
+- `POLL_INTERVAL` (optional) is the interval in milliseconds for polling tool changes (defaults to `30000` i.e. 30s), minimum: `1000` i.e. 1s)
 
 The following environment variables can be used in addition to the command line options.
 
@@ -85,6 +86,7 @@ The following environment variables can be used in addition to the command line 
 | --decision-service-ids | DECISION_SERVICE_IDS | (Optional) Comma-separated list of decision services (default: fetch all decision services)                    |
 | --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `development`)                          |
 | --debug                | DEBUG                | When the value is `true`, the debug messages are written to the `stderr` of the MCP server                   |
+| --poll-interval        | POLL_INTERVAL        | (Optional) interval in milliseconds for polling tool changes (default: `30000` i.e. 30s, minimum: `1000` i.e 1s)               |
 | --transport            | TRANSPORT            | (Optional) Transport protocol: `stdio` (default) or `http`                                                     |
 | --url                  | URL                  | Base URL of the decision runtime </br>                                                                       |
 
@@ -246,6 +248,48 @@ If the default naming strategy doesn't meet the requirements of your MCP hosts, 
 where
 - `OPERATION_ID` is the operation unique identifier
 - `YourCustomToolName` is the desired tool name for the operation
+## Dynamic Tool Updates
+
+The MCP server implements the `listChanged` capability, which allows it to automatically notify connected clients when the list of available tools changes. This feature enables real-time updates without requiring a server restart.
+
+### How it works
+
+1. **Initial Tool Discovery**: When the server starts, it discovers and registers all available decision service operations as MCP tools.
+
+2. **Continuous Monitoring**: The server polls the Decision Intelligence or Automation Decision Services runtime every 30 seconds to check for changes.
+
+3. **Change Detection**: The server detects the following types of changes:
+   - **New tools**: When a new decision service operation is deployed
+   - **Removed tools**: When a decision service operation is undeployed
+   - **Modified tools**: When the input schema of an operation changes
+
+4. **Client Notification**: When changes are detected, the server sends a `notifications/tools/list_changed` notification to all connected clients, prompting them to refresh their tool list.
+
+### Benefits
+
+- **No restart required**: New or updated decision services become available immediately
+- **Automatic synchronization**: Clients stay in sync with the latest decision services
+- **Seamless updates**: Changes are detected and propagated automatically
+
+### Configuration
+
+The dynamic tool update feature is enabled by default and requires no additional configuration. The polling interval defaults to 30 seconds (30000 milliseconds), which provides a good balance between responsiveness and system load.
+
+You can customize the polling interval using the `--poll-interval` option or the `POLL_INTERVAL` environment variable:
+
+```bash
+# Set polling interval to 60 seconds
+npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL> --poll-interval 60000
+```
+
+Or using an environment variable:
+```bash
+export POLL_INTERVAL=60000
+npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL>
+```
+
+**Note**: The minimum allowed polling interval is 1000 milliseconds (1 second).
+
 
 ## Technical details
 

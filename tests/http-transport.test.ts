@@ -24,10 +24,11 @@ import {Credentials} from "../src/credentials.js";
 import {setupNockMocks, validateClient} from "./test-utils.js";
 
 describe('HTTP Transport', () => {
+    const decisionIds = ['dummy.decision.id'];
     const configuration = new Configuration(Credentials.createDiApiKeyCredentials('validApiKey123'),  undefined, 'https://foo.bar.bra,fr', '1.2.3', true);
 
     beforeAll(() => {
-        setupNockMocks(configuration);
+        setupNockMocks(configuration, decisionIds);
     });
 
     test('should properly list and execute tool when configured with HTTP transport', async () => {
