@@ -38,6 +38,7 @@ interface ToolDefinition {
     name: string;
     title?: string;
     description?: string;
+    inputSchema: ZodRawShape,
     inputSchemaHash: string; // Hash of the input schema for comparison
     deploymentSpace: string;
     decisionServiceId: string;
@@ -112,31 +113,21 @@ async function processOpenAPIPaths(
             continue;
         }
 
-        const toolDef = getToolDefinition(value, openapi.components);
+        const toolDefinition = getToolDefinition(value, openapi.components);
 
-        if (toolDef == null) {
-            debug("No tooldef for ", key);
+        if (toolDefinition == null) {
+            debug("No tool definition for ", key);
             continue;
         }
-
-        const body = value.post.requestBody;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const operation = (body as any).content["application/json"];
-        const inputSchema = operation.schema;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const toolName = await getToolName(configuration, deploymentSpace, (openapi as any).info, operationId, serviceId, toolNames);
         toolNames.push(toolName);
 
-        // Store tool metadata for change detection
-        const schemas = openapi.components == undefined ? null : openapi.components.schemas;
-        const operationJsonInputSchema = expandJSONSchemaDefinition(inputSchema, schemas);
-
         toolMetadata.push({
             name: toolName,
-            title: toolDef.title,
-            description: toolDef.description,
-            inputSchemaHash: hashInputSchema(operationJsonInputSchema),
+            ...toolDefinition,
+            inputSchemaHash: hashInputSchema(toolDefinition.inputSchema),
             deploymentSpace,
             decisionServiceId: serviceId,
             operationId,
@@ -156,7 +147,7 @@ async function registerTool(
     toolNames: string[],
     toolDefinitions: ToolDefinition[]
 ) {
-    const newToolMetadata = await processOpenAPIPaths(
+    const toolMetadata = await processOpenAPIPaths(
         configuration,
         deploymentSpace,
         decisionOpenAPI,
@@ -165,50 +156,40 @@ async function registerTool(
     );
 
     // Register each tool with the server and store the RegisteredTool object
-    for (const toolMeta of newToolMetadata) {
+    for (const toolDefinition of toolMetadata) {
         if (!decisionOpenAPI.paths) {
             continue;
         }
 
-        const pathKey = Object.keys(decisionOpenAPI.paths).find(key => {
-            const value = decisionOpenAPI.paths![key];
-            return value?.post?.operationId === toolMeta.operationId;
+        // Register the tool and store the returned RegisteredTool object
+        const registeredTool = server.registerTool(
+            toolDefinition.name,
+            {
+                title: toolDefinition.title,
+                description: toolDefinition.description,
+                inputSchema: toolDefinition.inputSchema
+            },
+            async (input) => {
+                const decInput = input;
+                debug("Execute decision with", JSON.stringify(decInput, null, " "));
+                const str = await executeLastDeployedDecisionService(
+                    configuration,
+                    toolDefinition.deploymentSpace,
+                    toolDefinition.decisionServiceId,
+                    toolDefinition.operationId,
+                    decInput
+                );
+                return {
+                    content: [{ type: "text", text: str }]
+                };
+            }
+        );
+
+        // Store the complete tool definition with the RegisteredTool object
+        toolDefinitions.push({
+            ...toolDefinition,
+            registeredTool
         });
-
-        if (!pathKey) {
-            continue;
-        }
-
-        const pathItem = decisionOpenAPI.paths[pathKey];
-        const mcpToolDef = getToolDefinition(pathItem!, decisionOpenAPI.components);
-
-        if (mcpToolDef) {
-            // Register the tool and store the returned RegisteredTool object
-            const registeredTool = server.registerTool(
-                toolMeta.name,
-                mcpToolDef,
-                async (input) => {
-                    const decInput = input;
-                    debug("Execute decision with", JSON.stringify(decInput, null, " "));
-                    const str = await executeLastDeployedDecisionService(
-                        configuration,
-                        toolMeta.deploymentSpace,
-                        toolMeta.decisionServiceId,
-                        toolMeta.operationId,
-                        decInput
-                    );
-                    return {
-                        content: [{ type: "text", text: str }]
-                    };
-                }
-            );
-
-            // Store the complete tool definition with the RegisteredTool object
-            toolDefinitions.push({
-                ...toolMeta,
-                registeredTool
-            });
-        }
     }
 }
 
@@ -240,7 +221,7 @@ async function checkForToolChanges(
                     deploymentSpace,
                     openapi,
                     serviceId,
-                    toolNames
+                    []
                 );
                 
                 newToolMetadata.push(...toolMeta);
@@ -251,7 +232,7 @@ async function checkForToolChanges(
         for (const existingTool of currentToolDefinitions) {
             const newTool = newToolMetadata.find(t => t.name === existingTool.name);
             if (!newTool) {
-                debug("Tool removed:", existingTool.name);
+                debug(`The existing tool '${existingTool.name}' was removed from the server.`);
                 existingTool.registeredTool.remove();
                 hasChanges = true;
             }
@@ -272,7 +253,7 @@ async function checkForToolChanges(
             
             if (!existingTool) {
                 // New tool detected - need to register it
-                debug("New tool detected:", newToolMeta.name);
+                debug(`A new tool '${newToolMeta.name}' was added to the server.`);
                 hasChanges = true;
                 
                 // Use the OpenAPI document already stored in metadata
@@ -285,22 +266,24 @@ async function checkForToolChanges(
                     toolNames,
                     currentToolDefinitions
                 );
-            } else if (existingTool.inputSchemaHash !== newToolMeta.inputSchemaHash) {
+                continue;
+            }
+            if (existingTool.inputSchemaHash !== newToolMeta.inputSchemaHash) {
                 // Tool schema changed - update it
-                debug("Tool schema changed:", newToolMeta.name);
+                debug(`The schema for the existing tool '{newToolMeta.name}' was changed`);
                 hasChanges = true;
-                
+
                 // Use the OpenAPI document already stored in metadata
                 const openapi = newToolMeta.openapi;
                 const pathKey = Object.keys(openapi.paths || {}).find(key => {
                     const value = openapi.paths![key];
                     return value?.post?.operationId === newToolMeta.operationId;
                 });
-                
+
                 if (pathKey && openapi.paths) {
                     const pathItem = openapi.paths[pathKey];
                     const mcpToolDef = getToolDefinition(pathItem!, openapi.components);
-                    
+
                     if (mcpToolDef) {
                         // Update the existing tool with new schema
                         existingTool.registeredTool.update({
@@ -322,14 +305,16 @@ async function checkForToolChanges(
                                 };
                             }
                         });
-                        
+
                         // Update the stored metadata including the OpenAPI document
                         existingTool.title = newToolMeta.title;
                         existingTool.description = newToolMeta.description;
                         existingTool.inputSchemaHash = newToolMeta.inputSchemaHash;
                         existingTool.openapi = newToolMeta.openapi;
                     }
+                    continue;
                 }
+                debug(`No change was detected for the existing tool '${newToolMeta.name}`);
             }
         }
 

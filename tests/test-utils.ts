@@ -357,55 +357,69 @@ const executionOutput = {
 };
 
 // Setup nock mocks for testing
-export function setupNockMocks(configuration: Configuration, decisionIds: string[]): void {
+export function setupNockMocks(configuration: Configuration, decisionIds: string[], isOverridingToolName: boolean, persist: boolean = false): void {
     const metadataName = `mcpToolName.${operationId}`;
     const credentials = configuration.credentials;
     const headerValue = credentials.getAuthorizationHeaderValue();
     const headerKey = credentials.getAuthorizationHeaderKey();
+
+    function generateDecisionServiceId(deploymentSpaceId: string, decisionId: string) {
+        return `${deploymentSpaceId}/${decisionId}`;
+    }
+
     for (const deploymentSpace of configuration.deploymentSpaces) {
+        const deploymentSpaceId = encodeURIComponent(deploymentSpace);
+        const userAgentHeader = 'User-Agent';
+        const userAgentValue = `IBM-DI-MCP-Server/${configuration.version}`;
+
+        const metadataScope = nock(configuration.url)
+            .get(`/deploymentSpaces/${deploymentSpaceId}/metadata?names=decisionServiceId`)
+            .matchHeader(userAgentHeader, userAgentValue)
+            .matchHeader(headerKey, headerValue)
+            .reply(200,  decisionIds.map(decisionId => ({
+                'decisionServiceId': {
+                    'name': 'decisionServiceId',
+                    'kind': 'PLAIN',
+                    'readOnly': true,
+                    'value': generateDecisionServiceId(deploymentSpaceId, decisionId)
+                }
+            })));
+
+        if (persist) {
+            metadataScope.persist();
+        }
+
         for (const decisionId of decisionIds) {
-            const deploymentSpaceId = encodeURIComponent(deploymentSpace);
-            const decisionServiceId = `${deploymentSpaceId}/${decisionId}`;
-            const decisionService = encodeURIComponent(decisionServiceId);
-            const userAgentHeader = 'User-Agent';
-            const userAgentValue = `IBM-DI-MCP-Server/${configuration.version}`;
-            
+            const decisionServiceId = generateDecisionServiceId(deploymentSpaceId, decisionId);
+            const encodedDecisionServiceId = encodeURIComponent(decisionServiceId);
             // Generate OpenAPI content dynamically using the function
             const openApiContent = generateOpenAPIContent(decisionServiceId, decisionId, deploymentSpace);
-            
-            nock(configuration.url)
-                .get(`/deploymentSpaces/${deploymentSpaceId}/metadata?names=decisionServiceId`)
-                .matchHeader(userAgentHeader, userAgentValue)
-                .matchHeader(headerKey, headerValue)
-                .reply(200, [{
-                    'decisionServiceId': {
-                        'name': 'decisionServiceId',
-                        'kind': 'PLAIN',
-                        'readOnly': true,
-                        'value': decisionServiceId
-                    }
-                }])
+            const decisionScope = nock(configuration.url)
                 .get(`/deploymentSpaces/${deploymentSpaceId}/decisions/${encodeURIComponent(decisionId)}/metadata`)
                 .matchHeader(userAgentHeader, userAgentValue)
                 .matchHeader(headerKey, headerValue)
                 .reply(200, {
-                    map : {
-                        [metadataName] : {
+                    map: isOverridingToolName ? {
+                        [metadataName]: {
                             'name': metadataName,
                             'kind': 'PLAIN',
                             'readOnly': false,
-                            'value': `${deploymentSpaceId}-${decisionId}`
+                            'value': `metadata-toolName-${deploymentSpaceId}-${decisionId}-${operationId}`
                         }
-                    }
+                    } : {}
                 })
-                .get(`/selectors/lastDeployedDecisionService/deploymentSpaces/${deploymentSpaceId}/openapi?decisionServiceId=${decisionService}&outputFormat=JSON/openapi`)
+                .get(`/selectors/lastDeployedDecisionService/deploymentSpaces/${deploymentSpaceId}/openapi?decisionServiceId=${encodedDecisionServiceId}&outputFormat=JSON/openapi`)
                 .matchHeader(userAgentHeader, userAgentValue)
                 .matchHeader(headerKey, headerValue)
                 .reply(200, openApiContent)
-                .post(`/selectors/lastDeployedDecisionService/deploymentSpaces/${deploymentSpaceId}/operations/${encodeURIComponent(operationId)}/execute?decisionServiceId=${decisionService}`)
+                .post(`/selectors/lastDeployedDecisionService/deploymentSpaces/${deploymentSpaceId}/operations/${encodeURIComponent(operationId)}/execute?decisionServiceId=${encodedDecisionServiceId}`)
                 .matchHeader(userAgentHeader, userAgentValue)
                 .matchHeader(headerKey, headerValue)
                 .reply(200, executionOutput);
+
+            if (persist) {
+                decisionScope.persist();
+            }
             }
         }
 }
@@ -434,7 +448,7 @@ export async function validateClient(clientTransport: Transport, deploymentSpace
             // Tool name is generated as: deploymentSpace-decisionId (e.g., "staging-dummy.decision.id")
             expect(loanApprovalTool).toEqual(
                 expect.objectContaining({
-                    name: `${deploymentSpace}-dummy.decision.id`,
+                    name: `metadata-toolName-${deploymentSpace}-dummy.decision.id-${operationId}`,
                     title: operationId,
                     description: 'Execute approval'
                 },)
