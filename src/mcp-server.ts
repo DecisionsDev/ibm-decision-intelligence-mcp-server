@@ -29,12 +29,12 @@ import {getToolName} from "./ditool.js";
 import {jsonSchemaToZod} from "json-schema-to-zod";
 import {evalTS} from "./ts.js";
 import { OpenAPIV3_1 } from "openapi-types";
-import { ZodRawShape } from "zod";
+import { ZodRawShape, ZodType } from "zod";
 import { Configuration } from "./command-line.js";
 import http from "node:http";
 
 function getParameters(jsonSchema: OpenAPIV3_1.SchemaObject): ZodRawShape {
-    const params: ZodRawShape = {}
+    const params: Record<string, ZodType> = {}
 
     for (const propName in jsonSchema.properties) {
         const jsonSchemaProp = jsonSchema.properties[propName];

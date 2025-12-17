@@ -21,7 +21,7 @@
   "homepage": "https://github.com/DecisionsDev/decision-intelligence-mcp-server",
   "dependencies": {
     "@babel/preset-env": "^7.28.0",
-    "@modelcontextprotocol/sdk": "^1.17.0",
+    "@modelcontextprotocol/sdk": "^1.25.1",
     "axios": "^1.10.0",
     "commander": "^14.0.0",
     "json-schema-to-zod": "^2.6.1",
