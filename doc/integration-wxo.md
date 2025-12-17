@@ -1,10 +1,10 @@
-# Integration of the DI MCP Service in WxO
+# Integrating the IBM Decision Intelligence MCP Server into IBM watsonx Orchestrate
 
-## Specifying the APIKEY and URL environment variables
+## Specifying the API key and URL environment variables
 
 You can use the connection setting to specity the API key and URL environment variables.
 
-1. Open the main menu, expand **Manage**, and then click **Connections**. The Connection settings opens.
+1. Open the main menu, expand **Manage**, and then click **Connections**. The Connection settings page opens.
 
    [![Thumbnail](./wxO-connection-01-thumbnail.png)](doc/wxO-connection-01.png)
 
