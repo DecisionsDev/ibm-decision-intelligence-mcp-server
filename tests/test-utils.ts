@@ -357,10 +357,16 @@ const executionOutput = {
 };
 
 // Setup nock mocks for testing
-export function setupNockMocks(configuration: Configuration, decisionIds: string[], isOverridingToolName: boolean = false, isPersistingNockScope : boolean = false): void {
+export function setupNockMocks(
+    configuration: Configuration,
+    decisionIds: string[],
+    isOverridingToolName: boolean = false,
+    isPersistingNockScope: boolean = false,
+    schemaModifier?: (openApiContent: any) => any
+): void {
     // Clean up any existing nock interceptors for this URL to avoid conflicts
     nock.cleanAll();
-    
+
     const metadataName = `mcpToolName.${operationId}`;
     const credentials = configuration.credentials;
     const headerValue = credentials.getAuthorizationHeaderValue();
@@ -395,7 +401,13 @@ export function setupNockMocks(configuration: Configuration, decisionIds: string
             const decisionServiceId = generateDecisionServiceId(deploymentSpaceId, decisionId);
             const encodedDecisionServiceId = encodeURIComponent(decisionServiceId);
             // Generate OpenAPI content dynamically using the function
-            const openApiContent = generateOpenAPIContent(decisionServiceId, decisionId, deploymentSpace);
+            let openApiContent = generateOpenAPIContent(decisionServiceId, decisionId, deploymentSpace);
+
+            // Apply schema modifier if provided
+            if (schemaModifier) {
+                openApiContent = schemaModifier(openApiContent);
+            }
+
             metadataScope
                 .get(`/deploymentSpaces/${deploymentSpaceId}/decisions/${encodeURIComponent(decisionId)}/metadata`)
                 .matchHeader(userAgentHeader, userAgentValue)

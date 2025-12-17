@@ -23,7 +23,6 @@ import {createMcpServer} from "../src/mcp-server.js";
 import {PassThrough, Readable, Writable} from 'stream';
 import {Credentials} from "../src/credentials.js";
 import {setupNockMocks, validateClient, createAndConnectClient} from "./test-utils.js";
-import nock from "nock";
 
 jest.setTimeout(600_000); // 10 minutes
 
@@ -526,6 +525,76 @@ describe('Mcp Server', () => {
             const finalToolCount = updatedToolsResponse.tools.length;
             expect(finalToolCount).toEqual(initialToolCount);
             expect(updatedToolsResponse).toEqual(initialToolsResponse);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should detect and notify when a tool schema is changed', async () => {
+        const initialDecisionIds = ['dummy.decision.id'];
+        const deploymentSpace = 'staging';
+        const pollInterval = 100;
+        const { transport, clientTransport, configuration } = createTestEnvironment([deploymentSpace], initialDecisionIds, false, pollInterval);
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool schema
+            const initialToolsResponse = await client.listTools();
+            expect(initialToolsResponse.tools.length).toBe(1);
+            const initialTool = initialToolsResponse.tools[0];
+            const initialSchema = initialTool.inputSchema;
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            // Set up mock with modified schema (add a new property to the schema)
+            setupNockMocks(configuration, initialDecisionIds, false, true, (openApiContent) => {
+                // Add a new property to the approval_input schema
+                openApiContent.components.schemas.approval_input.properties.newField = {
+                    type: "string",
+                    description: "A new field added to test schema changes"
+                };
+                return openApiContent;
+            });
+
+            // Wait for the notification with timeout (poll interval is 100ms)
+            await withTimeout(notificationPromise, pollInterval * 2);
+            expect(notificationReceived).toBe(true);
+
+            // Verify that the tool schema has been updated
+            const updatedToolsResponse = await client.listTools();
+            expect(updatedToolsResponse.tools.length).toBe(1);
+            const updatedTool = updatedToolsResponse.tools[0];
+            const updatedSchema = updatedTool.inputSchema;
+
+            // Verify the schema has changed
+            expect(updatedSchema).not.toEqual(initialSchema);
+            expect((updatedSchema as any).properties.newField).toBeDefined();
+            expect((updatedSchema as any).properties.newField.type).toBe('string');
 
             await client.close();
         } finally {
