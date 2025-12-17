@@ -357,7 +357,10 @@ const executionOutput = {
 };
 
 // Setup nock mocks for testing
-export function setupNockMocks(configuration: Configuration, decisionIds: string[], isOverridingToolName: boolean, persist: boolean = false): void {
+export function setupNockMocks(configuration: Configuration, decisionIds: string[], isOverridingToolName: boolean = false, isPersistingNockScope : boolean = false): void {
+    // Clean up any existing nock interceptors for this URL to avoid conflicts
+    nock.cleanAll();
+    
     const metadataName = `mcpToolName.${operationId}`;
     const credentials = configuration.credentials;
     const headerValue = credentials.getAuthorizationHeaderValue();
@@ -384,17 +387,16 @@ export function setupNockMocks(configuration: Configuration, decisionIds: string
                     'value': generateDecisionServiceId(deploymentSpaceId, decisionId)
                 }
             })));
-
-        if (persist) {
+        // Make interceptors persistent so they can be called multiple times during polling
+        if (isPersistingNockScope) {
             metadataScope.persist();
         }
-
         for (const decisionId of decisionIds) {
             const decisionServiceId = generateDecisionServiceId(deploymentSpaceId, decisionId);
             const encodedDecisionServiceId = encodeURIComponent(decisionServiceId);
             // Generate OpenAPI content dynamically using the function
             const openApiContent = generateOpenAPIContent(decisionServiceId, decisionId, deploymentSpace);
-            const decisionScope = nock(configuration.url)
+            metadataScope
                 .get(`/deploymentSpaces/${deploymentSpaceId}/decisions/${encodeURIComponent(decisionId)}/metadata`)
                 .matchHeader(userAgentHeader, userAgentValue)
                 .matchHeader(headerKey, headerValue)
@@ -416,12 +418,8 @@ export function setupNockMocks(configuration: Configuration, decisionIds: string
                 .matchHeader(userAgentHeader, userAgentValue)
                 .matchHeader(headerKey, headerValue)
                 .reply(200, executionOutput);
-
-            if (persist) {
-                decisionScope.persist();
-            }
-            }
         }
+    }
 }
 
 export async function createAndConnectClient(clientTransport: Transport, name: string = "client", version: string = "1.0.0") {

@@ -424,4 +424,61 @@ describe('Mcp Server', () => {
             await server?.close();
         }
     });
-});
+
+
+    test('should detect and notify when an existing tool is removed', async () => {
+        const updatedDecisionIds = ['dummy.decision.id'];
+        const initialDecisionIds = [...updatedDecisionIds, 'new.decision.id'];
+        const deploymentSpace = 'staging';
+        const pollInterval = 100;
+        const { transport, clientTransport, configuration } = createTestEnvironment([deploymentSpace], initialDecisionIds, false, pollInterval);
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(2);
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            // Set up persistent mock for polling with additional tool
+            setupNockMocks(configuration, updatedDecisionIds, false);
+
+            // Wait for the notification with timeout (poll interval is 100ms)
+            await withTimeout(notificationPromise, pollInterval * 2);
+            expect(notificationReceived).toBe(true);
+
+            // Verify that tools list has been updated
+            const updatedToolsResponse = await client.listTools();
+            const finalToolCount = updatedToolsResponse.tools.length;
+            expect(finalToolCount).toBe(1);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });});
