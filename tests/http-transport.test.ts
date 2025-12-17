@@ -28,7 +28,7 @@ describe('HTTP Transport', () => {
     const configuration = new Configuration(Credentials.createDiApiKeyCredentials('validApiKey123'),  undefined, 'https://foo.bar.bra,fr', '1.2.3', true);
 
     beforeAll(() => {
-        setupNockMocks(configuration, decisionIds);
+        setupNockMocks(configuration, decisionIds, true);
     });
 
     test('should properly list and execute tool when configured with HTTP transport', async () => {

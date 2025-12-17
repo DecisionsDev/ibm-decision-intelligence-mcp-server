@@ -23,10 +23,13 @@ import {createMcpServer} from "../src/mcp-server.js";
 import {PassThrough, Readable, Writable} from 'stream';
 import {Credentials} from "../src/credentials.js";
 import {setupNockMocks, validateClient, createAndConnectClient} from "./test-utils.js";
+import nock from "nock";
+
+jest.setTimeout(600_000); // 10 minutes
 
 describe('Mcp Server', () => {
 
-    function createTestEnvironment(deploymentSpaces: string[] = ['staging', 'production'], decisionIds: string[] = ['dummy.decision.id'], pollInterval: number = 30000) {
+    function createTestEnvironment(deploymentSpaces: string[] = ['staging', 'production'], decisionIds: string[] = ['dummy.decision.id'], isOverridingToolName: boolean = true, pollInterval: number = 30000) {
         const fakeStdin = new PassThrough();
         const fakeStdout = new PassThrough();
         const transport = new StdioServerTransport(fakeStdin, fakeStdout);
@@ -41,7 +44,7 @@ describe('Mcp Server', () => {
             undefined,
             pollInterval
         );
-        setupNockMocks(configuration, decisionIds);
+        setupNockMocks(configuration, decisionIds, isOverridingToolName);
         
         return {
             transport,
@@ -236,8 +239,9 @@ describe('Mcp Server', () => {
     });
 
     test('should register tools with correct names from deployment spaces', async () => {
-        const deploymentSpaces = ['staging', 'production'];
-        const { transport, clientTransport, configuration } = createTestEnvironment(deploymentSpaces);
+        const deploymentSpaces = ['foo', 'bar'];
+        const decisionIds = ['toto', 'tutu'];
+        const { transport, clientTransport, configuration } = createTestEnvironment(deploymentSpaces, decisionIds, false);
         let server: McpServer | undefined;
 
         try {
@@ -253,7 +257,7 @@ describe('Mcp Server', () => {
 
             // Verify tools are registered for each deployment space
             const toolNames = toolsResponse.tools.map(t => t.name);
-            expect(toolNames.length).toBeGreaterThan(0);
+            expect(toolNames.length).toBe(4);
 
             // Tool names should be unique
             const uniqueToolNames = new Set(toolNames);
@@ -355,6 +359,63 @@ describe('Mcp Server', () => {
             const toolNames1 = toolsResponse1.tools.map(t => t.name).sort();
             const toolNames2 = toolsResponse2.tools.map(t => t.name).sort();
             expect(toolNames1).toEqual(toolNames2);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should detect and notify when a new tool is added', async () => {
+        const initialDecisionIds = ['dummy.decision.id'];
+        const deploymentSpace = 'staging';
+        const pollInterval = 100;
+        const { transport, clientTransport, configuration } = createTestEnvironment([deploymentSpace], initialDecisionIds, false, pollInterval);
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(1);
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            // Set up persistent mock for polling with additional tool
+            const updatedDecisionIds = [...initialDecisionIds, 'new.decision.id'];
+            setupNockMocks(configuration, updatedDecisionIds, false, true);
+
+            // Wait for the notification with timeout (poll interval is 100ms)
+           await withTimeout(notificationPromise, pollInterval * 2);
+            expect(notificationReceived).toBe(true);
+
+            // Verify that tools list has been updated
+            const updatedToolsResponse = await client.listTools();
+            const finalToolCount = updatedToolsResponse.tools.length;
+            expect(finalToolCount).toBe(2);
 
             await client.close();
         } finally {
