@@ -58,5 +58,3 @@ describe('generateOpenAPIContent', () => {
         expect(result.servers[0].url).toContain(`/deploymentSpaces/${deploymentSpaceId}/`);
     });
 });
-
-// Made with Bob
