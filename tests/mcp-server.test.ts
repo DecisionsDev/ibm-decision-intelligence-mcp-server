@@ -61,7 +61,7 @@ describe('Mcp Server', () => {
             configuration,
             decisionIds,
             isOverridingToolName,
-            isPersistingNockScope: pollInterval === defaultPollInterval
+            isPersistingNockScope: pollInterval < defaultPollInterval
         });
         
         return {
