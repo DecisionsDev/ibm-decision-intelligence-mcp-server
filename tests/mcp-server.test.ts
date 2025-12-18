@@ -57,7 +57,12 @@ describe('Mcp Server', () => {
             undefined,
             pollInterval
         );
-        setupNockMocks(configuration, decisionIds, isOverridingToolName, pollInterval === defaultPollInterval);
+        setupNockMocks({
+            configuration,
+            decisionIds,
+            isOverridingToolName,
+            isPersistingNockScope: pollInterval === defaultPollInterval
+        });
         
         return {
             transport,
@@ -428,7 +433,12 @@ describe('Mcp Server', () => {
 
             // Set up persistent mock for polling with additional tool
             const updatedDecisionIds = [...initialDecisionIds, 'new.decision.id'];
-            setupNockMocks(configuration, updatedDecisionIds, false, true);
+            setupNockMocks({
+                configuration,
+                decisionIds: updatedDecisionIds,
+                isOverridingToolName: false,
+                isPersistingNockScope: true
+            });
 
             // Wait for the notification with timeout (poll interval is 100ms)
            await withTimeout(notificationPromise, pollInterval * 2);
@@ -489,7 +499,11 @@ describe('Mcp Server', () => {
                 };
             });
 
-            setupNockMocks(configuration, updatedDecisionIds, false);
+            setupNockMocks({
+                configuration,
+                decisionIds: updatedDecisionIds,
+                isOverridingToolName: false
+            });
 
             // Wait for the notification with timeout (poll interval is 100ms)
             await withTimeout(notificationPromise, pollInterval * 2);
@@ -609,13 +623,19 @@ describe('Mcp Server', () => {
             });
 
             // Set up mock with modified schema (add a new property to the schema)
-            setupNockMocks(configuration, initialDecisionIds, false, true, (openApiContent) => {
-                // Add a new property to the approval_input schema
-                openApiContent.components.schemas.approval_input.properties.newField = {
-                    type: "string",
-                    description: "A new field added to test schema changes"
-                };
-                return openApiContent;
+            setupNockMocks({
+                configuration,
+                decisionIds: initialDecisionIds,
+                isOverridingToolName: false,
+                isPersistingNockScope: true,
+                schemaModifier: (openApiContent: any) => {
+                    // Add a new property to the approval_input schema
+                    openApiContent.components.schemas.approval_input.properties.newField = {
+                        type: "string",
+                        description: "A new field added to test schema changes"
+                    };
+                    return openApiContent;
+                }
             });
 
             // Wait for the notification with timeout (poll interval is 100ms)

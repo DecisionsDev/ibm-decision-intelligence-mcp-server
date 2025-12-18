@@ -357,13 +357,22 @@ const executionOutput = {
 };
 
 // Setup nock mocks for testing
-export function setupNockMocks(
-    configuration: Configuration,
-    decisionIds: string[],
-    isOverridingToolName: boolean = false,
-    isPersistingNockScope: boolean = false,
-    schemaModifier?: (openApiContent: any) => any
-): void {
+export interface SetupNockMocksConfig {
+    configuration: Configuration;
+    decisionIds: string[];
+    isOverridingToolName?: boolean;
+    isPersistingNockScope?: boolean;
+    schemaModifier?: (openApiContent: any) => any;
+}
+
+export function setupNockMocks(config: SetupNockMocksConfig): void {
+    const {
+        configuration,
+        decisionIds,
+        isOverridingToolName = false,
+        isPersistingNockScope = false,
+        schemaModifier
+    } = config;
     // Clean up any existing nock interceptors for this URL to avoid conflicts
     nock.cleanAll();
 
