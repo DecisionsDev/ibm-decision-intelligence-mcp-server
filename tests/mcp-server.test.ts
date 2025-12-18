@@ -23,6 +23,7 @@ import {createMcpServer} from "../src/mcp-server.js";
 import {PassThrough, Readable, Writable} from 'stream';
 import {Credentials} from "../src/credentials.js";
 import {setupNockMocks, validateClient, createAndConnectClient} from "./test-utils.js";
+import nock from "nock";
 
 const defaultPollInterval = 30000;
 
@@ -34,6 +35,11 @@ interface TestEnvironmentConfig {
 }
 
 describe('Mcp Server', () => {
+
+    afterEach(() => {
+        nock.cleanAll();
+        jest.clearAllMocks();
+    });
 
     function createTestEnvironment(config: TestEnvironmentConfig = {}) {
         const {
