@@ -24,8 +24,6 @@ import {PassThrough, Readable, Writable} from 'stream';
 import {Credentials} from "../src/credentials.js";
 import {setupNockMocks, validateClient, createAndConnectClient} from "./test-utils.js";
 
-jest.setTimeout(600_000); // 10 minutes
-
 const defaultPollInterval = 30000;
 describe('Mcp Server', () => {
 
