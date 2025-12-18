@@ -44,6 +44,12 @@ describe('HTTP Server Error Handling', () => {
 
     test('should return 400 error when no session ID provided for non-initialize request', async () => {
         httpServer = runHTTPServer(mockServer);
+        
+        // Wait for server to start listening
+        await new Promise<void>((resolve) => {
+            httpServer.on('listening', () => resolve());
+        });
+        
         const address = httpServer.address() as AddressInfo;
         const port = address.port;
 
