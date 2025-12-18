@@ -667,4 +667,149 @@ describe('Mcp Server', () => {
             await server?.close();
         }
     });
+
+    test('should not duplicate existing tools when adding a new tool to multi-operation OpenAPI', async () => {
+        // This test verifies the fix for the bug where adding a new tool to an OpenAPI
+        // document with multiple operations would try to re-register all tools,
+        // causing "Tool X is already registered" errors.
+        
+        const initialDecisionIds = ['dummy.decision.id'];
+        const deploymentSpace = 'staging';
+        const pollInterval = 100;
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count (should be 1 tool with 1 operation)
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(1);
+            const initialToolNames = initialToolsResponse.tools.map(t => t.name);
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            // Set up persistent mock with a SECOND operation added to the SAME OpenAPI document
+            // This simulates the real-world scenario where the Loan Approval decision service
+            // has multiple operations (e.g., "approval" and "BRA_New_Decision_Model")
+            setupNockMocks({
+                configuration,
+                decisionIds: initialDecisionIds,
+                isOverridingToolName: false,
+                isPersistingNockScope: true,
+                schemaModifier: (openApiContent: any) => {
+                    // Add a second operation to the same OpenAPI document
+                    openApiContent.paths['/newOperation/execute'] = {
+                        post: {
+                            tags: [openApiContent.info.title],
+                            summary: 'newOperation',
+                            description: 'Execute newOperation',
+                            operationId: 'newOperation',
+                            requestBody: {
+                                content: {
+                                    'application/json': {
+                                        schema: {
+                                            $ref: '#/components/schemas/newOperation_input'
+                                        },
+                                        example: {
+                                            input: '<input>'
+                                        }
+                                    }
+                                }
+                            },
+                            responses: {
+                                '200': {
+                                    description: 'Decision execution success',
+                                    content: {
+                                        'application/json': {
+                                            schema: {
+                                                $ref: '#/components/schemas/newOperation_output'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    // Add the schema for the new operation
+                    openApiContent.components.schemas.newOperation_input = {
+                        type: 'object',
+                        properties: {
+                            input: {
+                                type: 'string'
+                            }
+                        },
+                        'x-ibm-parameter-wrapper': true
+                    };
+
+                    openApiContent.components.schemas.newOperation_output = {
+                        type: 'object',
+                        properties: {
+                            output: {
+                                type: 'string'
+                            }
+                        },
+                        'x-ibm-parameter-wrapper': true
+                    };
+
+                    return openApiContent;
+                }
+            });
+
+            // Wait for the notification with timeout (poll interval is 100ms)
+            await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
+            expect(notificationReceived).toBe(true);
+
+            // Verify that tools list has been updated with the new tool
+            const updatedToolsResponse = await client.listTools();
+            const finalToolCount = updatedToolsResponse.tools.length;
+            expect(finalToolCount).toBe(2); // Should now have 2 tools
+
+            const finalToolNames = updatedToolsResponse.tools.map(t => t.name);
+            
+            // Verify the original tool is still there (not duplicated)
+            expect(finalToolNames).toContain(initialToolNames[0]);
+            
+            // Verify the new tool was added
+            const newToolNames = finalToolNames.filter(name => !initialToolNames.includes(name));
+            expect(newToolNames.length).toBe(1);
+            expect(newToolNames[0]).toContain('newOperation');
+
+            // Verify no duplicate tool names exist
+            const uniqueToolNames = new Set(finalToolNames);
+            expect(uniqueToolNames.size).toBe(finalToolCount);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
 });
