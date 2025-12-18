@@ -44,7 +44,7 @@ interface ToolDefinition {
     decisionServiceId: string;
     operationId: string;
     openapi: OpenAPIV3_1.Document; // Store the OpenAPI document to avoid re-fetching
-    registeredTool: RegisteredTool; // Store the RegisteredTool object returned by registerTool
+    registeredTool: RegisteredTool; // Store the RegisteredTool object returned by registerDecisionServiceTools
 }
 
 // Helper function to create a hash of the input schema for comparison
@@ -138,7 +138,39 @@ async function processOpenAPIPaths(
     return toolMetadata;
 }
 
-async function registerTool(
+function registerDecisionOperationTool(server: McpServer, configuration: Configuration, newTool: Omit<ToolDefinition, "registeredTool">, existingTools: ToolDefinition[]) {
+    // Register the tool and store the returned RegisteredTool object
+    const registeredTool = server.registerTool(
+        newTool.name,
+        {
+            title: newTool.title,
+            description: newTool.description,
+            inputSchema: newTool.inputSchema
+        },
+        async (input) => {
+            const decInput = input;
+            debug("Execute decision with", JSON.stringify(decInput, null, " "));
+            const str = await executeLastDeployedDecisionService(
+                configuration,
+                newTool.deploymentSpace,
+                newTool.decisionServiceId,
+                newTool.operationId,
+                decInput
+            );
+            return {
+                content: [{type: "text", text: str}]
+            };
+        }
+    );
+
+    // Store the complete tool definition with the RegisteredTool object
+    existingTools.push({
+        ...newTool,
+        registeredTool
+    });
+}
+
+async function registerDecisionServiceTools(
     server: McpServer,
     configuration: Configuration,
     deploymentSpace: string,
@@ -160,36 +192,7 @@ async function registerTool(
         if (!decisionOpenAPI.paths) {
             continue;
         }
-
-        // Register the tool and store the returned RegisteredTool object
-        const registeredTool = server.registerTool(
-            toolDefinition.name,
-            {
-                title: toolDefinition.title,
-                description: toolDefinition.description,
-                inputSchema: toolDefinition.inputSchema
-            },
-            async (input) => {
-                const decInput = input;
-                debug("Execute decision with", JSON.stringify(decInput, null, " "));
-                const str = await executeLastDeployedDecisionService(
-                    configuration,
-                    toolDefinition.deploymentSpace,
-                    toolDefinition.decisionServiceId,
-                    toolDefinition.operationId,
-                    decInput
-                );
-                return {
-                    content: [{ type: "text", text: str }]
-                };
-            }
-        );
-
-        // Store the complete tool definition with the RegisteredTool object
-        toolDefinitions.push({
-            ...toolDefinition,
-            registeredTool
-        });
+        registerDecisionOperationTool(server, configuration, toolDefinition, toolDefinitions);
     }
 }
 
@@ -200,7 +203,6 @@ async function checkForToolChanges(
     currentToolDefinitions: ToolDefinition[]
 ): Promise<boolean> {
     const newToolMetadata: Omit<ToolDefinition, 'registeredTool'>[] = [];
-    const toolNames: string[] = [];
     let hasChanges = false;
 
     try {
@@ -252,20 +254,10 @@ async function checkForToolChanges(
             const existingTool = currentToolDefinitions.find(t => t.name === newToolMeta.name);
             
             if (!existingTool) {
-                // New tool detected - need to register it
+                // New tool detected - register only this specific tool
                 debug(`A new tool '${newToolMeta.name}' was added to the server.`);
                 hasChanges = true;
-                
-                // Use the OpenAPI document already stored in metadata
-                await registerTool(
-                    server,
-                    configuration,
-                    newToolMeta.deploymentSpace,
-                    newToolMeta.openapi,
-                    newToolMeta.decisionServiceId,
-                    toolNames,
-                    currentToolDefinitions
-                );
+                registerDecisionOperationTool(server, configuration, newToolMeta, currentToolDefinitions);
                 continue;
             }
             if (existingTool.inputSchemaHash !== newToolMeta.inputSchemaHash) {
@@ -369,7 +361,7 @@ export async function createMcpServer(name: string, configuration: Configuration
             debug("serviceId", serviceId);
             try {
                 const openapi = await getDecisionServiceOpenAPI(configuration, deploymentSpace, serviceId);
-                await registerTool(server, configuration, deploymentSpace, openapi, serviceId, toolNames, toolDefinitions);
+                await registerDecisionServiceTools(server, configuration, deploymentSpace, openapi, serviceId, toolNames, toolDefinitions);
             } catch (error) {
                 // Log the error but continue processing other decision services
                 console.error(`Error registering tools for decision service '${serviceId}' in deployment space '${deploymentSpace}':`, error instanceof Error ? error.message : String(error));
