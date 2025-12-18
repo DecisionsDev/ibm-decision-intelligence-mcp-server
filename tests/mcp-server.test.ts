@@ -25,9 +25,24 @@ import {Credentials} from "../src/credentials.js";
 import {setupNockMocks, validateClient, createAndConnectClient} from "./test-utils.js";
 
 const defaultPollInterval = 30000;
+
+interface TestEnvironmentConfig {
+    deploymentSpaces?: string[];
+    decisionIds?: string[];
+    isOverridingToolName?: boolean;
+    pollInterval?: number;
+}
+
 describe('Mcp Server', () => {
 
-    function createTestEnvironment(deploymentSpaces: string[] = ['staging', 'production'], decisionIds: string[] = ['dummy.decision.id'], isOverridingToolName: boolean = true, pollInterval: number = defaultPollInterval) {
+    function createTestEnvironment(config: TestEnvironmentConfig = {}) {
+        const {
+            deploymentSpaces = ['staging', 'production'],
+            decisionIds = ['dummy.decision.id'],
+            isOverridingToolName = true,
+            pollInterval = defaultPollInterval
+        } = config;
+        
         const fakeStdin = new PassThrough();
         const fakeStdout = new PassThrough();
         const transport = new StdioServerTransport(fakeStdin, fakeStdout);
@@ -239,7 +254,11 @@ describe('Mcp Server', () => {
     test('should register tools with correct names from deployment spaces', async () => {
         const deploymentSpaces = ['foo', 'bar'];
         const decisionIds = ['toto', 'tutu'];
-        const { transport, clientTransport, configuration } = createTestEnvironment(deploymentSpaces, decisionIds, false);
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces,
+            decisionIds,
+            isOverridingToolName: false
+        });
         let server: McpServer | undefined;
 
         try {
@@ -370,7 +389,12 @@ describe('Mcp Server', () => {
         const initialDecisionIds = ['dummy.decision.id'];
         const deploymentSpace = 'staging';
         const pollInterval = 100;
-        const { transport, clientTransport, configuration } = createTestEnvironment([deploymentSpace], initialDecisionIds, false, pollInterval);
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval
+        });
         let server: McpServer | undefined;
 
         try {
@@ -428,7 +452,12 @@ describe('Mcp Server', () => {
         const initialDecisionIds = [...updatedDecisionIds, 'new.decision.id'];
         const deploymentSpace = 'staging';
         const pollInterval = 100;
-        const { transport, clientTransport, configuration } = createTestEnvironment([deploymentSpace], initialDecisionIds, false, pollInterval);
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval
+        });
         let server: McpServer | undefined;
 
         try {
@@ -483,7 +512,12 @@ describe('Mcp Server', () => {
         const initialDecisionIds = ['dummy.decision.id', 'new.decision.id'];
         const deploymentSpace = 'toto';
         const pollInterval = 100;
-        const { transport, clientTransport, configuration } = createTestEnvironment([deploymentSpace], initialDecisionIds, false, pollInterval);
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval
+        });
         let server: McpServer | undefined;
 
         try {
@@ -536,7 +570,12 @@ describe('Mcp Server', () => {
         const initialDecisionIds = ['dummy.decision.id'];
         const deploymentSpace = 'staging';
         const pollInterval = 100;
-        const { transport, clientTransport, configuration } = createTestEnvironment([deploymentSpace], initialDecisionIds, false, pollInterval);
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval
+        });
         let server: McpServer | undefined;
 
         try {
