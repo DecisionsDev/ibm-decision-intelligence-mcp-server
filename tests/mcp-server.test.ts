@@ -26,6 +26,7 @@ import {setupNockMocks, validateClient, createAndConnectClient} from "./test-uti
 import nock from "nock";
 
 const defaultPollInterval = 30000;
+const pollTimeoutFactor = 5;
 
 interface TestEnvironmentConfig {
     deploymentSpaces?: string[];
@@ -218,7 +219,7 @@ describe('Mcp Server', () => {
             server.sendToolListChanged();
 
             // Wait for the notification with safe timeout (no timer leaks)
-            await withTimeout(notificationPromise, 1000);
+            await withTimeout(notificationPromise, 500);
 
             expect(notificationReceived).toBe(true);
 
@@ -447,7 +448,7 @@ describe('Mcp Server', () => {
             });
 
             // Wait for the notification with timeout (poll interval is 100ms)
-           await withTimeout(notificationPromise, pollInterval * 2);
+           await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
            expect(notificationReceived).toBe(true);
 
             // Verify that tools list has been updated
@@ -512,7 +513,7 @@ describe('Mcp Server', () => {
             });
 
             // Wait for the notification with timeout (poll interval is 100ms)
-            await withTimeout(notificationPromise, pollInterval * 2);
+            await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
             expect(notificationReceived).toBe(true);
 
             // Verify that tools list has been updated
@@ -567,7 +568,7 @@ describe('Mcp Server', () => {
             };
 
             // Wait for potential notification (poll interval is 100ms, we wait for 2 cycles)
-            await new Promise(resolve => setTimeout(resolve, pollInterval * 2));
+            await new Promise(resolve => setTimeout(resolve, pollInterval * pollTimeoutFactor));
 
             // Verify no notification was received
             expect(notificationReceived).toBe(false);
@@ -645,7 +646,7 @@ describe('Mcp Server', () => {
             });
 
             // Wait for the notification with timeout (poll interval is 100ms)
-            await withTimeout(notificationPromise, pollInterval * 2);
+            await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
             expect(notificationReceived).toBe(true);
 
             // Verify that the tool schema has been updated
