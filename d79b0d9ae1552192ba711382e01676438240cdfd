@@ -1,0 +1,1 @@
+{"id":"7d30700b-dd94-4d6e-b6ed-9706f298a1d1","ts":"2025-12-18T09:01:17.951Z","version":"1.0.2","toolName":"apply_diff","taskID":"a7576260-87a3-45f9-809e-8c82949df8e0","path":"tests/httpserver.test.ts","numLinesApplied":7,"currentRange":{"startLine":47,"endLine":53}}
