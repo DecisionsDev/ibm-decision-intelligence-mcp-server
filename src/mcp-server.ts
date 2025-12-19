@@ -89,13 +89,7 @@ function getToolDefinition(path: OpenAPIV3_1.PathItemObject, components: OpenAPI
 }
 
 // Helper function to process OpenAPI paths and extract tool metadata (without registering)
-async function processOpenAPIPaths(
-    configuration: Configuration,
-    deploymentSpace: string,
-    openapi: OpenAPIV3_1.Document,
-    serviceId: string,
-    toolNames: string[]
-): Promise<Omit<ToolDefinition, 'registeredTool'>[]> {
+async function processOpenAPIPaths( configuration: Configuration, deploymentSpace: string, openapi: OpenAPIV3_1.Document, serviceId: string, toolNames: string[]): Promise<Omit<ToolDefinition, 'registeredTool'>[]> {
     const toolMetadata: Omit<ToolDefinition, 'registeredTool'>[] = [];
 
     for (const key in openapi.paths) {
@@ -139,23 +133,12 @@ async function processOpenAPIPaths(
 }
 
 // Helper function to create the decision execution callback
-function createDecisionExecutionCallback(
-    configuration: Configuration,
-    deploymentSpace: string,
-    decisionServiceId: string,
-    operationId: string
-) {
+function createDecisionExecutionCallback(configuration: Configuration, deploymentSpace: string, decisionServiceId: string, operationId: string) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (input: any) => {
         const decInput = input;
         debug("Execute decision with", JSON.stringify(decInput, null, " "));
-        const str = await executeLastDeployedDecisionService(
-            configuration,
-            deploymentSpace,
-            decisionServiceId,
-            operationId,
-            decInput
-        );
+        const str = await executeLastDeployedDecisionService(configuration, deploymentSpace, decisionServiceId, operationId, decInput);
         return {
             content: [{type: "text" as const, text: str}]
         };
@@ -171,14 +154,8 @@ function registerDecisionOperationTool(server: McpServer, configuration: Configu
             description: newTool.description,
             inputSchema: newTool.inputSchema
         },
-        createDecisionExecutionCallback(
-            configuration,
-            newTool.deploymentSpace,
-            newTool.decisionServiceId,
-            newTool.operationId
-        )
+        createDecisionExecutionCallback(configuration, newTool.deploymentSpace, newTool.decisionServiceId, newTool.operationId)
     );
-
     // Store the complete tool definition with the RegisteredTool object
     existingTools.push({
         ...newTool,
@@ -186,23 +163,8 @@ function registerDecisionOperationTool(server: McpServer, configuration: Configu
     });
 }
 
-async function registerDecisionServiceTools(
-    server: McpServer,
-    configuration: Configuration,
-    deploymentSpace: string,
-    decisionOpenAPI: OpenAPIV3_1.Document,
-    decisionServiceId: string,
-    toolNames: string[],
-    toolDefinitions: ToolDefinition[]
-) {
-    const toolMetadata = await processOpenAPIPaths(
-        configuration,
-        deploymentSpace,
-        decisionOpenAPI,
-        decisionServiceId,
-        toolNames
-    );
-
+async function registerDecisionServiceTools(server: McpServer, configuration: Configuration, deploymentSpace: string, decisionOpenAPI: OpenAPIV3_1.Document, decisionServiceId: string, toolNames: string[], toolDefinitions: ToolDefinition[]) {
+    const toolMetadata = await processOpenAPIPaths(configuration, deploymentSpace, decisionOpenAPI, decisionServiceId, toolNames);
     // Register each tool with the server and store the RegisteredTool object
     for (const toolDefinition of toolMetadata) {
         if (!decisionOpenAPI.paths) {
@@ -213,9 +175,7 @@ async function registerDecisionServiceTools(
 }
 
 // Helper function to fetch all tool metadata from deployment spaces
-async function fetchAllToolMetadata(
-    configuration: Configuration
-): Promise<Omit<ToolDefinition, 'registeredTool'>[]> {
+async function fetchAllToolMetadata(configuration: Configuration): Promise<Omit<ToolDefinition, 'registeredTool'>[]> {
     const newToolMetadata: Omit<ToolDefinition, 'registeredTool'>[] = [];
 
     for (const deploymentSpace of configuration.deploymentSpaces) {
@@ -228,16 +188,8 @@ async function fetchAllToolMetadata(
 
         for (const serviceId of serviceIds) {
             const openapi = await getDecisionServiceOpenAPI(configuration, deploymentSpace, serviceId);
-            
             // Extract tool metadata without registering
-            const toolMeta = await processOpenAPIPaths(
-                configuration,
-                deploymentSpace,
-                openapi,
-                serviceId,
-                []
-            );
-            
+            const toolMeta = await processOpenAPIPaths(configuration, deploymentSpace, openapi, serviceId, []);
             newToolMetadata.push(...toolMeta);
         }
     }
@@ -246,10 +198,7 @@ async function fetchAllToolMetadata(
 }
 
 // Helper function to remove tools that no longer exist
-function removeDeletedTools(
-    currentToolDefinitions: ToolDefinition[],
-    newToolsMap: Map<string, Omit<ToolDefinition, 'registeredTool'>>
-): void {
+function removeDeletedTools(currentToolDefinitions: ToolDefinition[], newToolsMap: Map<string, Omit<ToolDefinition, 'registeredTool'>>): void {
     // Remove tools from the server and array in reverse order to avoid index issues
     for (let i = currentToolDefinitions.length - 1; i >= 0; i--) {
         const existingTool = currentToolDefinitions[i];
@@ -261,59 +210,23 @@ function removeDeletedTools(
     }
 }
 
-// Helper function to update an existing tool with its new schema
-function updateExistingTool(
-    configuration: Configuration,
-    existingTool: ToolDefinition,
-    newToolMeta: Omit<ToolDefinition, 'registeredTool'>
-): boolean {
-    // Use the OpenAPI document already stored in metadata
-    const openapi = newToolMeta.openapi;
-    const pathKey = Object.keys(openapi.paths || {}).find(key => {
-        const value = openapi.paths![key];
-        return value?.post?.operationId === newToolMeta.operationId;
-    });
-
-    if (!pathKey || !openapi.paths) {
-        return false;
-    }
-
-    const pathItem = openapi.paths[pathKey];
-    const mcpToolDef = getToolDefinition(pathItem!, openapi.components);
-
-    if (!mcpToolDef) {
-        return false;
-    }
-
-    // Update the existing tool with the new schema
+function updateExistingTool(configuration: Configuration, existingTool: ToolDefinition, newToolMeta: Omit<ToolDefinition, 'registeredTool'>): void {
+    // Update the registered tool with new schema and callback
+    // The inputSchema is already validated and processed in newToolMeta
     existingTool.registeredTool.update({
         title: newToolMeta.title,
         description: newToolMeta.description,
-        paramsSchema: mcpToolDef.inputSchema,
-        callback: createDecisionExecutionCallback(
-            configuration,
-            newToolMeta.deploymentSpace,
-            newToolMeta.decisionServiceId,
-            newToolMeta.operationId
-        )
+        paramsSchema: newToolMeta.inputSchema,
+        callback: createDecisionExecutionCallback(configuration, newToolMeta.deploymentSpace, newToolMeta.decisionServiceId, newToolMeta.operationId)
     });
 
-    // Update the stored metadata including the OpenAPI document
+    // Update the stored metadata for future comparisons
     existingTool.title = newToolMeta.title;
     existingTool.description = newToolMeta.description;
+    existingTool.inputSchema = newToolMeta.inputSchema;
     existingTool.inputSchemaHash = newToolMeta.inputSchemaHash;
     existingTool.openapi = newToolMeta.openapi;
-
-    return true;
 }
-
-// Debug message constants for tool change operations
-const TOOL_CHANGE_MESSAGES = {
-    TOOL_ADDED: (name: string) => `A new tool '${name}' was added to the server.`,
-    SCHEMA_CHANGED: (name: string) => `The schema for the existing tool '${name}' was changed`,
-    UPDATE_SUCCESS: (name: string) => `Successfully updated tool '${name}'`,
-    UPDATE_FAILED: (name: string) => `Failed to update tool '${name}'`
-} as const;
 
 /**
  * Encapsulates tool change monitoring with proper state management.
@@ -322,19 +235,7 @@ const TOOL_CHANGE_MESSAGES = {
 class ToolChangeMonitor {
     private isPolling = false;
 
-    /**
-     * Checks for tool changes and updates the server accordingly.
-     * Uses a polling lock to prevent concurrent executions.
-     * Continues processing even if individual tool updates fail (best-effort).
-     *
-     * @param server - The MCP server instance
-     * @param configuration - Server configuration
-     * @param currentToolDefinitions - Array of current tool definitions (modified in-place)
-     */
-    async checkForChanges(
-        server: McpServer,
-        configuration: Configuration,
-        currentToolDefinitions: ToolDefinition[]
+    async checkForChanges(server: McpServer, configuration: Configuration, currentToolDefinitions: ToolDefinition[]
     ): Promise<void> {
         if (this.isPolling) {
             return;
@@ -354,116 +255,40 @@ class ToolChangeMonitor {
      * Performs the actual tool change detection and processing.
      * Uses Map-based lookups for O(1) performance with large tool sets.
      */
-    private async performToolCheck(
-        server: McpServer,
-        configuration: Configuration,
-        currentToolDefinitions: ToolDefinition[]
+    private async performToolCheck(server: McpServer, configuration: Configuration, currentToolDefinitions: ToolDefinition[]
     ): Promise<void> {
         const newToolMetadata = await fetchAllToolMetadata(configuration);
         
         // Create maps for O(1) lookups (critical for 1000s of tools)
-        const existingToolsMap = new Map(
-            currentToolDefinitions.map(t => [t.name, t])
-        );
-        const newToolsMap = new Map(
-            newToolMetadata.map(t => [t.name, t])
-        );
+        const existingToolsMap = new Map(currentToolDefinitions.map(t => [t.name, t]));
+        const newToolsMap = new Map(newToolMetadata.map(t => [t.name, t]));
 
         // Remove tools that no longer exist
         removeDeletedTools(currentToolDefinitions, newToolsMap);
 
         // Process new and updated tools
-        this.processToolChanges(
-            server,
-            configuration,
-            currentToolDefinitions,
-            newToolMetadata,
-            existingToolsMap
-        );
+        this.processToolChanges(server, configuration, currentToolDefinitions, newToolMetadata, existingToolsMap);
     }
 
-    /**
-     * Processes all tool changes (additions and updates).
-     * Continues processing even if individual updates fail.
-     */
-    private processToolChanges(
-        server: McpServer,
-        configuration: Configuration,
-        currentToolDefinitions: ToolDefinition[],
-        newToolMetadata: Omit<ToolDefinition, 'registeredTool'>[],
-        existingToolsMap: Map<string, ToolDefinition>
-    ): void {
+    private processToolChanges(server: McpServer, configuration: Configuration, currentToolDefinitions: ToolDefinition[], newToolMetadata: Omit<ToolDefinition, 'registeredTool'>[], existingToolsMap: Map<string, ToolDefinition>): void {
         for (const newToolMeta of newToolMetadata) {
-            const existingTool = existingToolsMap.get(newToolMeta.name);
-            
+            const toolName = newToolMeta.name;
+            const existingTool = existingToolsMap.get(toolName);
             if (!existingTool) {
-                this.handleNewTool(server, configuration, newToolMeta, currentToolDefinitions);
-            } else if (this.hasSchemaChanged(existingTool, newToolMeta)) {
-                this.handleSchemaUpdate(configuration, existingTool, newToolMeta);
+                debug(`A new tool '${toolName}' was added to the server.`);
+                registerDecisionOperationTool(server, configuration, newToolMeta, currentToolDefinitions);
+                continue;
+            }
+            if (existingTool.inputSchemaHash !== newToolMeta.inputSchemaHash) {
+                debug( `The input schema for the existing tool '${toolName}' was changed.`);
+                updateExistingTool(configuration, existingTool, newToolMeta);
             }
         }
-    }
-
-    /**
-     * Handles registration of a newly detected tool.
-     */
-    private handleNewTool(
-        server: McpServer,
-        configuration: Configuration,
-        newToolMeta: Omit<ToolDefinition, 'registeredTool'>,
-        currentToolDefinitions: ToolDefinition[]
-    ): void {
-        debug(TOOL_CHANGE_MESSAGES.TOOL_ADDED(newToolMeta.name));
-        registerDecisionOperationTool(server, configuration, newToolMeta, currentToolDefinitions);
-    }
-
-    /**
-     * Handles updating an existing tool when its schema changes.
-     * Logs success/failure but continues processing (best-effort).
-     */
-    private handleSchemaUpdate(
-        configuration: Configuration,
-        existingTool: ToolDefinition,
-        newToolMeta: Omit<ToolDefinition, 'registeredTool'>
-    ): void {
-        debug(TOOL_CHANGE_MESSAGES.SCHEMA_CHANGED(newToolMeta.name));
-        
-        const success = updateExistingTool(configuration, existingTool, newToolMeta);
-        debug(success
-            ? TOOL_CHANGE_MESSAGES.UPDATE_SUCCESS(newToolMeta.name)
-            : TOOL_CHANGE_MESSAGES.UPDATE_FAILED(newToolMeta.name)
-        );
-    }
-
-    /**
-     * Checks if a tool's schema has changed by comparing hashes.
-     */
-    private hasSchemaChanged(
-        existingTool: ToolDefinition,
-        newToolMeta: Omit<ToolDefinition, 'registeredTool'>
-    ): boolean {
-        return existingTool.inputSchemaHash !== newToolMeta.inputSchemaHash;
     }
 }
 
 // Create singleton instance for tool change monitoring
-const toolChangeMonitor = new ToolChangeMonitor();
-
-/**
- * Function to check for tool changes and update tools accordingly.
- * This is a wrapper around the ToolChangeMonitor class for backward compatibility.
- *
- * @param server - The MCP server instance
- * @param configuration - Server configuration
- * @param currentToolDefinitions - Array of current tool definitions (modified in-place)
- */
-async function checkForToolChanges(
-    server: McpServer,
-    configuration: Configuration,
-    currentToolDefinitions: ToolDefinition[]
-): Promise<void> {
-    await toolChangeMonitor.checkForChanges(server, configuration, currentToolDefinitions);
-}
+const TOOL_CHANGE_MONITOR = new ToolChangeMonitor();
 
 function registerToolHandlers(server: McpServer) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -526,7 +351,7 @@ export async function createMcpServer(name: string, configuration: Configuration
     debug(`Now polling for tools change every ${configuration.formattedPollInterval()}`);
     const pollTimer = setInterval(async () => {
         debug("Polling for tool changes...");
-        await checkForToolChanges(server, configuration, toolDefinitions);
+        await TOOL_CHANGE_MONITOR.checkForChanges(server, configuration, toolDefinitions);
     }, configuration.pollIntervalMs);
 
     // Clean up interval on server close
