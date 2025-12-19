@@ -69,7 +69,7 @@ describe('Mcp Server', () => {
             configuration,
             decisionIds,
             isOverridingToolName,
-            isPersistingNockScope: pollInterval < defaultPollInterval
+            persistMocksForPolling: pollInterval < defaultPollInterval
         });
         
         return {
@@ -445,7 +445,7 @@ describe('Mcp Server', () => {
                 configuration,
                 decisionIds: updatedDecisionIds,
                 isOverridingToolName: false,
-                isPersistingNockScope: true
+                persistMocksForPolling: true
             });
 
             // Wait for the notification with timeout (poll interval is 100ms)
@@ -635,7 +635,7 @@ describe('Mcp Server', () => {
                 configuration,
                 decisionIds: initialDecisionIds,
                 isOverridingToolName: false,
-                isPersistingNockScope: true,
+                persistMocksForPolling: true,
                 schemaModifier: (openApiContent: any) => {
                     // Add a new property to the approval_input schema
                     openApiContent.components.schemas.approval_input.properties.newField = {
@@ -722,7 +722,7 @@ describe('Mcp Server', () => {
                 configuration,
                 decisionIds: initialDecisionIds,
                 isOverridingToolName: false,
-                isPersistingNockScope: true,
+                persistMocksForPolling: true,
                 schemaModifier: (openApiContent: any) => {
                     // Add a second operation to the same OpenAPI document
                     openApiContent.paths['/newOperation/execute'] = {

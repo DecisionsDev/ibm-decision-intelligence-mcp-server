@@ -361,7 +361,7 @@ export interface SetupNockMocksConfig {
     configuration: Configuration;
     decisionIds: string[];
     isOverridingToolName?: boolean;
-    isPersistingNockScope?: boolean;
+    persistMocksForPolling?: boolean;
     schemaModifier?: (openApiContent: any) => any;
 }
 
@@ -370,7 +370,7 @@ export function setupNockMocks(config: SetupNockMocksConfig): void {
         configuration,
         decisionIds,
         isOverridingToolName = false,
-        isPersistingNockScope = false,
+        persistMocksForPolling = false,
         schemaModifier
     } = config;
     // Clean up any existing nock interceptors for this URL to avoid conflicts
@@ -403,7 +403,7 @@ export function setupNockMocks(config: SetupNockMocksConfig): void {
                 }
             })));
         // Make interceptors persistent so they can be called multiple times during polling
-        if (isPersistingNockScope) {
+        if (persistMocksForPolling) {
             metadataScope.persist();
         }
         for (const decisionId of decisionIds) {
