@@ -237,13 +237,16 @@ class ToolChangeMonitor {
 
     async checkForChanges(server: McpServer, configuration: Configuration, currentToolDefinitions: ToolDefinition[]
     ): Promise<void> {
+        debug(`Polling for tool changes... [${Date.now()}]`);
         if (this.isPolling) {
+            debug("Another polling request is already in-progress: skipping this one.");
             return;
         }
 
         this.isPolling = true;
         try {
             await this.performToolCheck(server, configuration, currentToolDefinitions);
+            debug("Polling for tool changes completed successfully.");
         } catch (error) {
             handleError("Error checking for tool changes: ", error);
         } finally {
@@ -300,6 +303,20 @@ function handleError(label: string, error: any) {
     debug(`${label}:`, error instanceof Error ? error.message : String(error));
 }
 
+async function setupTransportAndReturnInstance(server: McpServer, configuration: Configuration): Promise<StdioServerTransport | http.Server> {
+    const version = configuration.version;
+    if (configuration.isHttpTransport()) {
+        debug("IBM Decision Intelligence MCP Server version", version, "running on http");
+        const httpServer = runHTTPServer(server);
+        return httpServer;
+    }
+
+    const transport = configuration.transport!;
+    await server.connect(transport);
+    debug("IBM Decision Intelligence MCP Server version", version, "running on stdio");
+    return transport;
+}
+
 export async function createMcpServer(name: string, configuration: Configuration): Promise<{ server: McpServer, transport?: StdioServerTransport, httpServer?: http.Server }> {
     const version = configuration.version;
     const server = new McpServer({
@@ -347,28 +364,25 @@ export async function createMcpServer(name: string, configuration: Configuration
         }
     }
 
+    const transportOrHttpServer = await setupTransportAndReturnInstance(server, configuration);
+
     // Start polling for tool changes
     debug(`Now polling for tools change every ${configuration.formattedPollInterval()}`);
     const pollTimer = setInterval(async () => {
-        debug("Polling for tool changes...");
         await TOOL_CHANGE_MONITOR.checkForChanges(server, configuration, toolDefinitions);
     }, configuration.pollIntervalMs);
 
-    // Clean up interval on server close
+    // Clean up interval based on the transport type
+    const isHttp = configuration.isHttpTransport();
+    const httpServer = isHttp ? transportOrHttpServer as http.Server : null;
+
     const originalClose = server.close.bind(server);
     server.close = async () => {
         clearInterval(pollTimer);
+        httpServer?.close();
         return originalClose();
     };
 
-    if (configuration.isHttpTransport()) {
-        debug("IBM Decision Intelligence MCP Server version", version, "running on http");
-        const httpServer = runHTTPServer(server);
-        return { server, httpServer }
-    }
-
-    const transport = configuration.transport!;
-    await server.connect(transport);
-    debug("IBM Decision Intelligence MCP Server version", version, "running on stdio");
-    return { server, transport }
-}
+    return isHttp
+        ? { server, httpServer: httpServer! }
+        : { server, transport: transportOrHttpServer as StdioServerTransport };}
