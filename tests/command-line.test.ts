@@ -18,6 +18,7 @@ import {createConfiguration, Configuration} from '../src/command-line.js';
 import {debug, setDebug} from '../src/debug.js';
 import {AuthenticationMode, parseAuthenticationMode, defaultAuthenticationMode} from '../src/authentication-mode.js';
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
+import {Credentials} from '../src/credentials.js';
 
 // Mock the debug function and setDebug function
 jest.mock('../src/debug', () => ({
@@ -1116,16 +1117,17 @@ describe('CLI Configuration', () => {
     });
 
     describe('validatePollInterval', () => {
-        test('should accept valid poll interval', () => {
+        test('should accept valid poll interval (seconds externally, ms internally)', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '60000'
+                '--decisions-poll-interval', '60'
             ]);
 
-            expect(config.pollInterval).toBe(60000);
+            // 60 seconds -> 60000 milliseconds
+            expect(config.pollIntervalMs).toBe(60000);
         });
 
         test('should use default poll interval when not specified', () => {
@@ -1136,8 +1138,8 @@ describe('CLI Configuration', () => {
                 '--transport', 'STDIO'
             ]);
 
-            expect(config.pollInterval).toBe(Configuration.defaultPollInterval());
-            expect(config.pollInterval).toBe(30);
+            expect(config.pollIntervalMs).toBe(Configuration.defaultPollIntervalMs());
+            expect(config.pollIntervalMs).toBe(30000);
         });
 
         test('should throw error for non-numeric poll interval', () => {
@@ -1165,20 +1167,20 @@ describe('CLI Configuration', () => {
             }).toThrow(`Invalid poll interval: '${invalidPollInterval}'. Must be at least 1 second.`);
         });
 
-        test('should accept minimum valid poll interval of 1000ms', () => {
+        test('should accept minimum valid poll interval of 1s (1000ms internally)', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '1000'
+                '--decisions-poll-interval', '1'
             ]);
 
-            expect(config.pollInterval).toBe(1000);
+            expect(config.pollIntervalMs).toBe(1000);
         });
 
-        test('should use poll interval from environment variable', () => {
-            process.env.DECISIONS_POLL_INTERVAL = '45000';
+        test('should use poll interval from environment variable (seconds externally, ms internally)', () => {
+            process.env.DECISIONS_POLL_INTERVAL = '45';
 
             const config = createConfiguration(version, [
                 'node', 'cli.js',
@@ -1187,21 +1189,21 @@ describe('CLI Configuration', () => {
                 '--transport', 'STDIO'
             ]);
 
-            expect(config.pollInterval).toBe(45000);
+            expect(config.pollIntervalMs).toBe(45000);
         });
 
         test('should prioritize CLI argument over environment variable', () => {
-            process.env.DECISIONS_POLL_INTERVAL = '45000';
+            process.env.DECISIONS_POLL_INTERVAL = '45';
 
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '60000'
+                '--decisions-poll-interval', '60'
             ]);
 
-            expect(config.pollInterval).toBe(60000);
+            expect(config.pollIntervalMs).toBe(60000);
         });
 
         test('should call debug function with poll interval', () => {
@@ -1210,10 +1212,155 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '60000'
+                '--decisions-poll-interval', '60'
             ]);
 
-            expect(mockDebug).toHaveBeenCalledWith('DECISIONS_POLL_INTERVAL=60000');
+            expect(mockDebug).toHaveBeenCalledWith('DECISIONS_POLL_INTERVAL=60');
+        });
+    });
+
+    describe('formattedPollInterval', () => {
+        test('should format interval less than 1 second as milliseconds', () => {
+            // Direct construction to test sub-second intervals (CLI minimum is 1 second)
+            const config = new Configuration(
+                Credentials.createDiApiKeyCredentials('dummy.api.key'),
+                new StdioServerTransport(),
+                url,
+                version,
+                false,
+                ['development'],
+                undefined,
+                500 // 500ms
+            );
+
+            expect(config.formattedPollInterval()).toBe('500ms');
+        });
+
+        test('should format exactly 1 second', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--decisions-poll-interval', '1'
+            ]);
+
+            expect(config.formattedPollInterval()).toBe('1s');
+        });
+
+        test('should format interval between 1 second and 1 minute as seconds without decimals', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--decisions-poll-interval', '30'
+            ]);
+
+            expect(config.formattedPollInterval()).toBe('30s');
+        });
+
+        test('should format interval with fractional seconds', () => {
+            // Direct construction to test fractional seconds (parseInt truncates decimals)
+            const config = new Configuration(
+                Credentials.createDiApiKeyCredentials('dummy.api.key'),
+                new StdioServerTransport(),
+                url,
+                version,
+                false,
+                ['development'],
+                undefined,
+                45500 // 45.5 seconds = 45500ms
+            );
+
+            expect(config.formattedPollInterval()).toBe('45.500s');
+        });
+
+        test('should format exactly 1 minute', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--decisions-poll-interval', '60'
+            ]);
+
+            expect(config.formattedPollInterval()).toBe('1min');
+        });
+
+        test('should format interval with minutes and no remaining seconds', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--decisions-poll-interval', '120'
+            ]);
+
+            expect(config.formattedPollInterval()).toBe('2min');
+        });
+
+        test('should format interval with minutes and remaining seconds', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--decisions-poll-interval', '90'
+            ]);
+
+            expect(config.formattedPollInterval()).toBe('1min 30s');
+        });
+
+        test('should format interval with minutes and fractional remaining seconds', () => {
+            // Direct construction to test fractional seconds (parseInt truncates decimals)
+            const config = new Configuration(
+                Credentials.createDiApiKeyCredentials('dummy.api.key'),
+                new StdioServerTransport(),
+                url,
+                version,
+                false,
+                ['development'],
+                undefined,
+                75500 // 75.5 seconds = 75500ms
+            );
+
+            expect(config.formattedPollInterval()).toBe('1min 15.500s');
+        });
+
+        test('should format default interval (30 seconds)', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO'
+            ]);
+
+            expect(config.formattedPollInterval()).toBe('30s');
+        });
+
+        test('should format large interval (multiple minutes)', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--decisions-poll-interval', '300'
+            ]);
+
+            expect(config.formattedPollInterval()).toBe('5min');
+        });
+
+        test('should format large interval with remaining seconds', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--decisions-poll-interval', '125'
+            ]);
+
+            expect(config.formattedPollInterval()).toBe('2min 5s');
         });
     });
 });

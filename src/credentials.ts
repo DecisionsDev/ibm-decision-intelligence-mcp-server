@@ -17,7 +17,7 @@
 import {OptionValues} from "commander";
 import {debug} from "./debug.js";
 import {AuthenticationMode, parseAuthenticationMode, defaultAuthenticationMode} from "./authentication-mode.js";
-import {ENV_VARS} from "./command-line.js";
+import {EnvironmentVariables, resolveOption} from "./command-line.js";
 
 interface CredentialsOptions {
     apikey?: string;
@@ -43,7 +43,7 @@ export class Credentials {
         debug(this.toString());
     }
 
-    static validateAuthenticationMode(authenticationMode: string): AuthenticationMode {
+    static validateAuthenticationMode(authenticationMode: string | undefined): AuthenticationMode {
         debug("AUTHENTICATION_MODE=" + authenticationMode);
         if (authenticationMode === undefined) {
             const actualAuthenticationMode = defaultAuthenticationMode();
@@ -59,47 +59,47 @@ export class Credentials {
 
     static validateCredentials(options: OptionValues) {
         const authenticationMode = this.validateAuthenticationMode(
-            options.authenticationMode || process.env[ENV_VARS.AUTHENTICATION_MODE]
+            resolveOption(options.authenticationMode, EnvironmentVariables.AUTHENTICATION_MODE)
         );
 
         switch (authenticationMode) {
             case AuthenticationMode.DI_API_KEY: {
-                const apikey = options.diApikey || process.env[ENV_VARS.DI_APIKEY];
+                const apikey = resolveOption(options.diApikey, EnvironmentVariables.DI_APIKEY);
                 return this.createDiApiKeyCredentials(apikey);
             }
             case AuthenticationMode.ZEN_API_KEY: {
-                const apikey = options.zenApikey || process.env[ENV_VARS.ZEN_APIKEY];
-                const username = options.zenUsername || process.env[ENV_VARS.ZEN_USERNAME];
+                const apikey = resolveOption(options.zenApikey, EnvironmentVariables.ZEN_APIKEY);
+                const username = resolveOption(options.zenUsername, EnvironmentVariables.ZEN_USERNAME);
                 return this.createZenApiKeyCredentials(username, apikey);
 
             }
             case AuthenticationMode.BASIC: {
-                const username = options.basicUsername || process.env[ENV_VARS.BASIC_USERNAME];
-                const password = options.basicPassword || process.env[ENV_VARS.BASIC_PASSWORD];
+                const username = resolveOption(options.basicUsername, EnvironmentVariables.BASIC_USERNAME);
+                const password = resolveOption(options.basicPassword, EnvironmentVariables.BASIC_PASSWORD);
                 return this.createBasicAuthCredentials(username, password);
             }
         }
     }
 
-    static createDiApiKeyCredentials(apikey: string) {
+    static createDiApiKeyCredentials(apikey: string | undefined) {
         this.checkNonEmptyString(apikey, 'DI API key');
         return new Credentials({apikey}, AuthenticationMode.DI_API_KEY);
     }
 
-    static createZenApiKeyCredentials(username: string, apikey: string) {
+    static createZenApiKeyCredentials(username: string | undefined, apikey: string | undefined) {
         this.checkNonEmptyString(apikey, 'Zen API key');
         this.checkNonEmptyString(username, 'Zen username');
         return new Credentials({username, apikey}, AuthenticationMode.ZEN_API_KEY);
     }
 
-    static createBasicAuthCredentials(username: string, password: string) {
+    static createBasicAuthCredentials(username: string | undefined, password: string | undefined) {
         this.checkNonEmptyString(username, 'username for basic authentication');
         this.checkNonEmptyString(password, 'password for basic authentication');
         return new Credentials({ username, password }, AuthenticationMode.BASIC);
     }
 
 
-    private static checkNonEmptyString(value:string, errorLabel: string) {
+    private static checkNonEmptyString(value: string | undefined, errorLabel: string) {
         if (value === undefined) {
             throw new Error(`The ${errorLabel} must be defined`);
         }
