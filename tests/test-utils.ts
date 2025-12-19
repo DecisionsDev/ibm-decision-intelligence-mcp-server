@@ -373,9 +373,6 @@ export function setupNockMocks(config: SetupNockMocksConfig): void {
         persistMocksForPolling = false,
         schemaModifier
     } = config;
-    // Clean up any existing nock interceptors for this URL to avoid conflicts
-    nock.cleanAll();
-
     const metadataName = `mcpToolName.${operationId}`;
     const credentials = configuration.credentials;
     const headerValue = credentials.getAuthorizationHeaderValue();
