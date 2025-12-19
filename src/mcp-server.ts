@@ -145,6 +145,7 @@ function createDecisionExecutionCallback(
     decisionServiceId: string,
     operationId: string
 ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (input: any) => {
         const decInput = input;
         debug("Execute decision with", JSON.stringify(decInput, null, " "));
