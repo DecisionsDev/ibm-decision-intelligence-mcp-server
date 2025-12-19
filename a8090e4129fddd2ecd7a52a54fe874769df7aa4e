@@ -1,0 +1,2 @@
+{"id":"64473936-b4bf-4517-a193-316b17e7fb1f","ts":"2025-12-19T09:51:41.911Z","version":"1.0.2","toolName":"apply_diff","taskID":"1d7a3b93-b484-4890-83e6-a0d64968c572","path":"tests/mcp-server.test.ts","numLinesApplied":2,"currentRange":{"startLine":448,"endLine":449}}
+{"id":"681b0053-0e7c-475b-8de9-9b70422ae4c2","ts":"2025-12-19T09:51:41.909Z","version":"1.0.2","toolName":"apply_diff","taskID":"1d7a3b93-b484-4890-83e6-a0d64968c572","path":"tests/mcp-server.test.ts","numLinesApplied":2,"currentRange":{"startLine":72,"endLine":73}}
