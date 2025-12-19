@@ -1,0 +1,1 @@
+{"id":"25ddbbd1-1749-4fd9-91e6-6ec083238086","ts":"2025-12-19T09:01:12.713Z","version":"1.0.2","toolName":"apply_diff","taskID":"5ef6e8c5-2526-42f6-a41a-d2b94f552ecd","path":"tests/mcp-server.test.ts","numLinesApplied":2,"currentRange":{"startLine":29,"endLine":30}}
