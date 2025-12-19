@@ -74,7 +74,7 @@ export class Configuration {
 }
 
 // Environment variable names
-const ENV_VARS = {
+export const ENV_VARS = {
     DEBUG: 'DEBUG',
     URL: 'URL',
     TRANSPORT: 'TRANSPORT',

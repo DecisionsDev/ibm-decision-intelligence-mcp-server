@@ -17,6 +17,7 @@
 import {OptionValues} from "commander";
 import {debug} from "./debug.js";
 import {AuthenticationMode, parseAuthenticationMode, defaultAuthenticationMode} from "./authentication-mode.js";
+import {ENV_VARS} from "./command-line.js";
 
 interface CredentialsOptions {
     apikey?: string;
@@ -57,22 +58,24 @@ export class Credentials {
     }
 
     static validateCredentials(options: OptionValues) {
-        const authenticationMode = this.validateAuthenticationMode(options.authenticationMode || process.env.AUTHENTICATION_MODE);
+        const authenticationMode = this.validateAuthenticationMode(
+            options.authenticationMode || process.env[ENV_VARS.AUTHENTICATION_MODE]
+        );
 
         switch (authenticationMode) {
             case AuthenticationMode.DI_API_KEY: {
-                const apikey = options.diApikey || process.env.DI_APIKEY;
+                const apikey = options.diApikey || process.env[ENV_VARS.DI_APIKEY];
                 return this.createDiApiKeyCredentials(apikey);
             }
             case AuthenticationMode.ZEN_API_KEY: {
-                const apikey = options.zenApikey || process.env.ZEN_APIKEY;
-                const username = options.zenUsername || process.env.ZEN_USERNAME;
+                const apikey = options.zenApikey || process.env[ENV_VARS.ZEN_APIKEY];
+                const username = options.zenUsername || process.env[ENV_VARS.ZEN_USERNAME];
                 return this.createZenApiKeyCredentials(username, apikey);
 
             }
             case AuthenticationMode.BASIC: {
-                const username = options.basicUsername || process.env.BASIC_USERNAME;
-                const password = options.basicPassword || process.env.BASIC_PASSWORD;
+                const username = options.basicUsername || process.env[ENV_VARS.BASIC_USERNAME];
+                const password = options.basicPassword || process.env[ENV_VARS.BASIC_PASSWORD];
                 return this.createBasicAuthCredentials(username, password);
             }
         }
