@@ -17,7 +17,7 @@ export default tseslint.config(
                 {
                     "selector": "variable",
                     "modifiers": ["const"],
-                    "format": ["PascalCase", "camelCase"]
+                    "format": ["PascalCase", "camelCase", "UPPER_CASE"]
                 },
                 {
                     "selector": "default",
@@ -38,6 +38,10 @@ export default tseslint.config(
                 },
                 {
                     "selector": "objectLiteralProperty",
+                    "format": ["UPPER_CASE", "camelCase"]
+                },
+                {
+                    "selector": "objectLiteralMethod",
                     "format": ["UPPER_CASE", "camelCase"]
                 }
             ]

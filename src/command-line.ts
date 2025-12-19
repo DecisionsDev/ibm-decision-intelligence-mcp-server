@@ -144,7 +144,7 @@ export class Configuration {
 }
 
 // Environment variable names
-export const EnvironmentVariables = {
+export const ENV_VARIABLES = {
     DEBUG: 'DEBUG',
     URL: 'URL',
     TRANSPORT: 'TRANSPORT',
@@ -304,16 +304,16 @@ export function createConfiguration(version: string, cliArguments?: readonly str
     program.parse(cliArguments);
 
     const options = program.opts();
-    const debugFlag = Boolean(options.debug || resolveOption(undefined, EnvironmentVariables.DEBUG) === "true");
+    const debugFlag = Boolean(options.debug || resolveOption(undefined, ENV_VARIABLES.DEBUG) === "true");
     setDebug(debugFlag);
 
     // Validate all options
     const credentials = Credentials.validateCredentials(options);
-    const transport = validateTransport(resolveOption(options.transport, EnvironmentVariables.TRANSPORT));
-    const url = validateUrl(resolveOption(options.url, EnvironmentVariables.URL));
-    const deploymentSpaces = validateDeploymentSpaces(resolveOption(options.deploymentSpaces, EnvironmentVariables.DEPLOYMENT_SPACES));
-    const decisionServiceIds = parseDecisionServiceIds(resolveOption(options.decisionServiceIds, EnvironmentVariables.DECISION_SERVICE_IDS));
-    const pollIntervalMs = Configuration.validatePollInterval(resolveOption(options.decisionsPollInterval, EnvironmentVariables.DECISIONS_POLL_INTERVAL));
+    const transport = validateTransport(resolveOption(options.transport, ENV_VARIABLES.TRANSPORT));
+    const url = validateUrl(resolveOption(options.url, ENV_VARIABLES.URL));
+    const deploymentSpaces = validateDeploymentSpaces(resolveOption(options.deploymentSpaces, ENV_VARIABLES.DEPLOYMENT_SPACES));
+    const decisionServiceIds = parseDecisionServiceIds(resolveOption(options.decisionServiceIds, ENV_VARIABLES.DECISION_SERVICE_IDS));
+    const pollIntervalMs = Configuration.validatePollInterval(resolveOption(options.decisionsPollInterval, ENV_VARIABLES.DECISIONS_POLL_INTERVAL));
  
     // Create and return the configuration object
     return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds, pollIntervalMs);
