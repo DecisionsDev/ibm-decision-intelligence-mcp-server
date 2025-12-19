@@ -17,7 +17,7 @@
 import {OptionValues} from "commander";
 import {debug} from "./debug.js";
 import {AuthenticationMode, parseAuthenticationMode, defaultAuthenticationMode} from "./authentication-mode.js";
-import {EnvironmentVariables, resolveOption} from "./command-line.js";
+import {ENV_VARIABLES, resolveOption} from "./command-line.js";
 
 interface CredentialsOptions {
     apikey?: string;
@@ -59,23 +59,23 @@ export class Credentials {
 
     static validateCredentials(options: OptionValues) {
         const authenticationMode = this.validateAuthenticationMode(
-            resolveOption(options.authenticationMode, EnvironmentVariables.AUTHENTICATION_MODE)
+            resolveOption(options.authenticationMode, ENV_VARIABLES.AUTHENTICATION_MODE)
         );
 
         switch (authenticationMode) {
             case AuthenticationMode.DI_API_KEY: {
-                const apikey = resolveOption(options.diApikey, EnvironmentVariables.DI_APIKEY);
+                const apikey = resolveOption(options.diApikey, ENV_VARIABLES.DI_APIKEY);
                 return this.createDiApiKeyCredentials(apikey);
             }
             case AuthenticationMode.ZEN_API_KEY: {
-                const apikey = resolveOption(options.zenApikey, EnvironmentVariables.ZEN_APIKEY);
-                const username = resolveOption(options.zenUsername, EnvironmentVariables.ZEN_USERNAME);
+                const apikey = resolveOption(options.zenApikey, ENV_VARIABLES.ZEN_APIKEY);
+                const username = resolveOption(options.zenUsername, ENV_VARIABLES.ZEN_USERNAME);
                 return this.createZenApiKeyCredentials(username, apikey);
 
             }
             case AuthenticationMode.BASIC: {
-                const username = resolveOption(options.basicUsername, EnvironmentVariables.BASIC_USERNAME);
-                const password = resolveOption(options.basicPassword, EnvironmentVariables.BASIC_PASSWORD);
+                const username = resolveOption(options.basicUsername, ENV_VARIABLES.BASIC_USERNAME);
+                const password = resolveOption(options.basicPassword, ENV_VARIABLES.BASIC_PASSWORD);
                 return this.createBasicAuthCredentials(username, password);
             }
         }
