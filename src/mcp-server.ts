@@ -308,7 +308,12 @@ function updateExistingTool(
 }
 
 // Function to check for tool changes and update tools accordingly
+let isPolling = false;
 async function checkForToolChanges(server: McpServer, configuration: Configuration, currentToolDefinitions: ToolDefinition[]): Promise<void> {
+    if (isPolling) {
+        return;
+    }
+    isPolling = true;
     try {
         // Fetch all new tool metadata
         const newToolMetadata = await fetchAllToolMetadata(configuration);
@@ -348,6 +353,8 @@ async function checkForToolChanges(server: McpServer, configuration: Configurati
         }
     } catch (error) {
         handleError("Error checking for tool changes: ", error);
+    } finally {
+        isPolling = false;
     }
 }
 
