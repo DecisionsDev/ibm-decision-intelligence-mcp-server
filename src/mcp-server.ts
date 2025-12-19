@@ -138,6 +138,29 @@ async function processOpenAPIPaths(
     return toolMetadata;
 }
 
+// Helper function to create the decision execution callback
+function createDecisionExecutionCallback(
+    configuration: Configuration,
+    deploymentSpace: string,
+    decisionServiceId: string,
+    operationId: string
+) {
+    return async (input: any) => {
+        const decInput = input;
+        debug("Execute decision with", JSON.stringify(decInput, null, " "));
+        const str = await executeLastDeployedDecisionService(
+            configuration,
+            deploymentSpace,
+            decisionServiceId,
+            operationId,
+            decInput
+        );
+        return {
+            content: [{type: "text" as const, text: str}]
+        };
+    };
+}
+
 function registerDecisionOperationTool(server: McpServer, configuration: Configuration, newTool: Omit<ToolDefinition, "registeredTool">, existingTools: ToolDefinition[]) {
     // Register the tool and store the returned RegisteredTool object
     const registeredTool = server.registerTool(
@@ -147,20 +170,12 @@ function registerDecisionOperationTool(server: McpServer, configuration: Configu
             description: newTool.description,
             inputSchema: newTool.inputSchema
         },
-        async (input) => {
-            const decInput = input;
-            debug("Execute decision with", JSON.stringify(decInput, null, " "));
-            const str = await executeLastDeployedDecisionService(
-                configuration,
-                newTool.deploymentSpace,
-                newTool.decisionServiceId,
-                newTool.operationId,
-                decInput
-            );
-            return {
-                content: [{type: "text", text: str}]
-            };
-        }
+        createDecisionExecutionCallback(
+            configuration,
+            newTool.deploymentSpace,
+            newTool.decisionServiceId,
+            newTool.operationId
+        )
     );
 
     // Store the complete tool definition with the RegisteredTool object
@@ -278,20 +293,12 @@ async function checkForToolChanges(
                             title: newToolMeta.title,
                             description: newToolMeta.description,
                             paramsSchema: mcpToolDef.inputSchema,
-                            callback: async (input) => {
-                                const decInput = input;
-                                debug("Execute decision with", JSON.stringify(decInput, null, " "));
-                                const str = await executeLastDeployedDecisionService(
-                                    configuration,
-                                    newToolMeta.deploymentSpace,
-                                    newToolMeta.decisionServiceId,
-                                    newToolMeta.operationId,
-                                    decInput
-                                );
-                                return {
-                                    content: [{ type: "text", text: str }]
-                                };
-                            }
+                            callback: createDecisionExecutionCallback(
+                                configuration,
+                                newToolMeta.deploymentSpace,
+                                newToolMeta.decisionServiceId,
+                                newToolMeta.operationId
+                            )
                         });
 
                         // Update the stored metadata including the OpenAPI document
