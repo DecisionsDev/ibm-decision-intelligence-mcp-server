@@ -58,7 +58,7 @@ npx -y di-mcp-server --authentication-mode basic --basic-username <YOUR_USERNAME
 
 Syntax of the command line:
 ```bash
-npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>] [--poll-interval <POLL_INTERVAL>]
+npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>] [--decisions-poll-interval <DECISIONS_POLL_INTERVAL>]
 ```
 
 where
@@ -71,7 +71,7 @@ where
 - `TRANSPORT` (optional) is the transport protocol, either `stdio` (default) or `http`.
 - `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `development`).
 - `DECISION_SERVICE_IDS` (optional) If defined, comma-separated list of decision service ids to be exposed as tools
-- `POLL_INTERVAL` (optional) is the interval in milliseconds for polling tool changes (defaults to `30000` i.e. 30s), minimum: `1000` i.e. 1s)
+- `DECISIONS_POLL_INTERVAL` (optional) is the interval in seconds for polling decisions (default: `30`, minimum: `1`)
 
 The following environment variables can be used in addition to the command line options.
 
@@ -86,7 +86,7 @@ The following environment variables can be used in addition to the command line 
 | --decision-service-ids | DECISION_SERVICE_IDS | (Optional) Comma-separated list of decision services (default: fetch all decision services)                    |
 | --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `development`)                          |
 | --debug                | DEBUG                | When the value is `true`, the debug messages are written to the `stderr` of the MCP server                   |
-| --poll-interval        | POLL_INTERVAL        | (Optional) interval in milliseconds for polling tool changes (default: `30000` i.e. 30s, minimum: `1000` i.e 1s)               |
+| --decisions-poll-interval        | DECISIONS_POLL_INTERVAL        | (Optional) interval in seconds for polling decisions (default: `30`, minimum: `1`)               |
 | --transport            | TRANSPORT            | (Optional) Transport protocol: `stdio` (default) or `http`                                                     |
 | --url                  | URL                  | Base URL of the decision runtime </br>                                                                       |
 
@@ -273,22 +273,21 @@ The MCP server implements the `listChanged` capability, which allows it to autom
 
 ### Configuration
 
-The dynamic tool update feature is enabled by default and requires no additional configuration. The polling interval defaults to 30 seconds (30000 milliseconds), which provides a good balance between responsiveness and system load.
+The dynamic tool update feature is enabled by default and requires no additional configuration. The decisions polling interval defaults to 30 seconds, which provides a good balance between responsiveness and system load.
 
-You can customize the polling interval using the `--poll-interval` option or the `POLL_INTERVAL` environment variable:
+You can customize the polling interval using the `--decisions-poll-interval` option or the `DECISIONS_POLL_INTERVAL` environment variable:
 
 ```bash
 # Set polling interval to 60 seconds
-npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL> --poll-interval 60000
+npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL> --decisions-poll-interval 60
 ```
 
 Or using an environment variable:
 ```bash
-export POLL_INTERVAL=60000
+export DECISIONS_POLL_INTERVAL=60
 npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL>
 ```
-
-**Note**: The minimum allowed polling interval is 1000 milliseconds (1 second).
+**Note**: The minimum allowed polling interval is 1 second.
 
 
 ## Technical details

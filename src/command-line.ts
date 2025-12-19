@@ -25,6 +25,8 @@ export class Configuration {
     static readonly HTTP = "http";
 
     static readonly TRANSPORTS: string[] = [Configuration.STDIO, Configuration.HTTP];
+    static readonly MIN_POLL_INTERVAL_S = 1;
+    private static readonly DEFAULT_POLL_INTERVAL_S = 30;
 
     constructor(
         public credentials: Credentials,
@@ -47,7 +49,7 @@ export class Configuration {
     }
 
     static defaultPollInterval(): number {
-        return 30000; // 30 seconds in milliseconds
+        return Configuration.DEFAULT_POLL_INTERVAL_S;
     }
 
     isStdioTransport(): boolean {
@@ -174,20 +176,20 @@ function parseDecisionServiceIds(decisionServiceIds: string | undefined): string
 }
 
 function validatePollInterval(pollInterval: string | undefined): number {
-    debug("POLL_INTERVAL=" + pollInterval);
+    debug("DECISIONS_POLL_INTERVAL=" + pollInterval);
     if (pollInterval === undefined) {
         const defaultPollInterval = Configuration.defaultPollInterval();
-        debug(`The poll interval is not defined. Using '${defaultPollInterval}' milliseconds`);
+        debug(`The poll interval is not defined. Using '${defaultPollInterval}' seconds.`);
         return defaultPollInterval;
     }
     const parsedInterval = parseInt(pollInterval, 10);
     if (isNaN(parsedInterval)) {
-        throw new Error(`Invalid poll interval: '${pollInterval}'. Must be a valid number in milliseconds.`);
+        throw new Error(`Invalid poll interval: '${pollInterval}'. Must be a valid number in seconds.`);
     }
-    if (parsedInterval < 1000) {
-        throw new Error(`Invalid poll interval: '${pollInterval}'. Must be at least 1000 milliseconds (1 second).`);
+    if (parsedInterval < Configuration.MIN_POLL_INTERVAL_S) {
+        throw new Error(`Invalid poll interval: '${pollInterval}'. Must be at least ${Configuration.MIN_POLL_INTERVAL_S} second.`);
     }
-    return parsedInterval;
+    return parsedInterval ;
 }
 
 export function createConfiguration(version: string, cliArguments?: readonly string[]): Configuration {
@@ -207,7 +209,7 @@ export function createConfiguration(version: string, cliArguments?: readonly str
         .option('--transport <transport>', "Transport mode: 'stdio' or 'http'")
         .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
         .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
-        .option('--poll-interval <milliseconds>', 'Interval in milliseconds for polling tool changes (default: 30000, minimum: 1000)');
+        .option('--decisions-poll-interval <milliseconds>', 'Interval in s for polling tool changes (default: 30000, minimum: 1000)');
 
     program.parse(cliArguments);
 
@@ -221,7 +223,7 @@ export function createConfiguration(version: string, cliArguments?: readonly str
     const url = validateUrl(options.url || process.env.URL);
     const deploymentSpaces = validateDeploymentSpaces(options.deploymentSpaces || process.env.DEPLOYMENT_SPACES);
     const decisionServiceIds = parseDecisionServiceIds(options.decisionServiceIds || process.env.DECISION_SERVICE_IDS);
-    const pollInterval = validatePollInterval(options.pollInterval || process.env.POLL_INTERVAL);
+    const pollInterval = validatePollInterval(options.decisionsPollInterval || process.env.DECISIONS_POLL_INTERVAL);
  
     // Create and return configuration object
     return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds, pollInterval);

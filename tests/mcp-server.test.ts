@@ -26,6 +26,7 @@ import {setupNockMocks, validateClient, createAndConnectClient} from "./test-uti
 import nock from "nock";
 
 const defaultPollInterval = 30000;
+// Wait up to 5 poll cycles to account for timing variations in CI environments
 const pollTimeoutFactor = 5;
 
 interface TestEnvironmentConfig {
