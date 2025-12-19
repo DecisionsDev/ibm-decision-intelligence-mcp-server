@@ -86,7 +86,7 @@ The following environment variables can be used in addition to the command line 
 | --decision-service-ids | DECISION_SERVICE_IDS | (Optional) Comma-separated list of decision services (default: fetch all decision services)                    |
 | --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `development`)                          |
 | --debug                | DEBUG                | When the value is `true`, the debug messages are written to the `stderr` of the MCP server                   |
-| --decisions-poll-interval        | DECISIONS_POLL_INTERVAL        | (Optional) interval in seconds for polling decisions (default: `30`, minimum: `1`)               |
+| --decisions-poll-interval | DECISIONS_POLL_INTERVAL | (Optional) interval in seconds for polling decisions (default: `30`, minimum: `1`)               |
 | --transport            | TRANSPORT            | (Optional) Transport protocol: `stdio` (default) or `http`                                                     |
 | --url                  | URL                  | Base URL of the decision runtime </br>                                                                       |
 
