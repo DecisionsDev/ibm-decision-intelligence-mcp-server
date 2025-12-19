@@ -307,18 +307,61 @@ function updateExistingTool(
     return true;
 }
 
-// Function to check for tool changes and update tools accordingly
-let isPolling = false;
-async function checkForToolChanges(server: McpServer, configuration: Configuration, currentToolDefinitions: ToolDefinition[]): Promise<void> {
-    if (isPolling) {
-        return;
+// Debug message constants for tool change operations
+const TOOL_CHANGE_MESSAGES = {
+    TOOL_ADDED: (name: string) => `A new tool '${name}' was added to the server.`,
+    SCHEMA_CHANGED: (name: string) => `The schema for the existing tool '${name}' was changed`,
+    UPDATE_SUCCESS: (name: string) => `Successfully updated tool '${name}'`,
+    UPDATE_FAILED: (name: string) => `Failed to update tool '${name}'`
+} as const;
+
+/**
+ * Encapsulates tool change monitoring with proper state management.
+ * Handles polling lock to prevent concurrent checks when monitoring 1000s of tools.
+ */
+class ToolChangeMonitor {
+    private isPolling = false;
+
+    /**
+     * Checks for tool changes and updates the server accordingly.
+     * Uses a polling lock to prevent concurrent executions.
+     * Continues processing even if individual tool updates fail (best-effort).
+     *
+     * @param server - The MCP server instance
+     * @param configuration - Server configuration
+     * @param currentToolDefinitions - Array of current tool definitions (modified in-place)
+     */
+    async checkForChanges(
+        server: McpServer,
+        configuration: Configuration,
+        currentToolDefinitions: ToolDefinition[]
+    ): Promise<void> {
+        if (this.isPolling) {
+            return;
+        }
+
+        this.isPolling = true;
+        try {
+            await this.performToolCheck(server, configuration, currentToolDefinitions);
+        } catch (error) {
+            handleError("Error checking for tool changes: ", error);
+        } finally {
+            this.isPolling = false;
+        }
     }
-    isPolling = true;
-    try {
-        // Fetch all new tool metadata
+
+    /**
+     * Performs the actual tool change detection and processing.
+     * Uses Map-based lookups for O(1) performance with large tool sets.
+     */
+    private async performToolCheck(
+        server: McpServer,
+        configuration: Configuration,
+        currentToolDefinitions: ToolDefinition[]
+    ): Promise<void> {
         const newToolMetadata = await fetchAllToolMetadata(configuration);
         
-        // Create maps for O(1) lookups
+        // Create maps for O(1) lookups (critical for 1000s of tools)
         const existingToolsMap = new Map(
             currentToolDefinitions.map(t => [t.name, t])
         );
@@ -330,32 +373,96 @@ async function checkForToolChanges(server: McpServer, configuration: Configurati
         removeDeletedTools(currentToolDefinitions, newToolsMap);
 
         // Process new and updated tools
+        this.processToolChanges(
+            server,
+            configuration,
+            currentToolDefinitions,
+            newToolMetadata,
+            existingToolsMap
+        );
+    }
+
+    /**
+     * Processes all tool changes (additions and updates).
+     * Continues processing even if individual updates fail.
+     */
+    private processToolChanges(
+        server: McpServer,
+        configuration: Configuration,
+        currentToolDefinitions: ToolDefinition[],
+        newToolMetadata: Omit<ToolDefinition, 'registeredTool'>[],
+        existingToolsMap: Map<string, ToolDefinition>
+    ): void {
         for (const newToolMeta of newToolMetadata) {
             const existingTool = existingToolsMap.get(newToolMeta.name);
             
             if (!existingTool) {
-                // New tool detected - register it
-                debug(`A new tool '${newToolMeta.name}' was added to the server.`);
-                registerDecisionOperationTool(server, configuration, newToolMeta, currentToolDefinitions);
-                continue;
-            }
-            
-            // Check if tool schema changed
-            if (existingTool.inputSchemaHash !== newToolMeta.inputSchemaHash) {
-                debug(`The schema for the existing tool '${newToolMeta.name}' was changed`);
-                
-                if (updateExistingTool(configuration, existingTool, newToolMeta)) {
-                    debug(`Successfully updated tool '${newToolMeta.name}'`);
-                } else {
-                    debug(`Failed to update tool '${newToolMeta.name}'`);
-                }
+                this.handleNewTool(server, configuration, newToolMeta, currentToolDefinitions);
+            } else if (this.hasSchemaChanged(existingTool, newToolMeta)) {
+                this.handleSchemaUpdate(configuration, existingTool, newToolMeta);
             }
         }
-    } catch (error) {
-        handleError("Error checking for tool changes: ", error);
-    } finally {
-        isPolling = false;
     }
+
+    /**
+     * Handles registration of a newly detected tool.
+     */
+    private handleNewTool(
+        server: McpServer,
+        configuration: Configuration,
+        newToolMeta: Omit<ToolDefinition, 'registeredTool'>,
+        currentToolDefinitions: ToolDefinition[]
+    ): void {
+        debug(TOOL_CHANGE_MESSAGES.TOOL_ADDED(newToolMeta.name));
+        registerDecisionOperationTool(server, configuration, newToolMeta, currentToolDefinitions);
+    }
+
+    /**
+     * Handles updating an existing tool when its schema changes.
+     * Logs success/failure but continues processing (best-effort).
+     */
+    private handleSchemaUpdate(
+        configuration: Configuration,
+        existingTool: ToolDefinition,
+        newToolMeta: Omit<ToolDefinition, 'registeredTool'>
+    ): void {
+        debug(TOOL_CHANGE_MESSAGES.SCHEMA_CHANGED(newToolMeta.name));
+        
+        const success = updateExistingTool(configuration, existingTool, newToolMeta);
+        debug(success
+            ? TOOL_CHANGE_MESSAGES.UPDATE_SUCCESS(newToolMeta.name)
+            : TOOL_CHANGE_MESSAGES.UPDATE_FAILED(newToolMeta.name)
+        );
+    }
+
+    /**
+     * Checks if a tool's schema has changed by comparing hashes.
+     */
+    private hasSchemaChanged(
+        existingTool: ToolDefinition,
+        newToolMeta: Omit<ToolDefinition, 'registeredTool'>
+    ): boolean {
+        return existingTool.inputSchemaHash !== newToolMeta.inputSchemaHash;
+    }
+}
+
+// Create singleton instance for tool change monitoring
+const toolChangeMonitor = new ToolChangeMonitor();
+
+/**
+ * Function to check for tool changes and update tools accordingly.
+ * This is a wrapper around the ToolChangeMonitor class for backward compatibility.
+ *
+ * @param server - The MCP server instance
+ * @param configuration - Server configuration
+ * @param currentToolDefinitions - Array of current tool definitions (modified in-place)
+ */
+async function checkForToolChanges(
+    server: McpServer,
+    configuration: Configuration,
+    currentToolDefinitions: ToolDefinition[]
+): Promise<void> {
+    await toolChangeMonitor.checkForChanges(server, configuration, currentToolDefinitions);
 }
 
 function registerToolHandlers(server: McpServer) {
