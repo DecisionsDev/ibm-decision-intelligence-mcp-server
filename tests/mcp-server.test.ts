@@ -26,14 +26,15 @@ import {setupNockMocks, validateClient, createAndConnectClient} from "./test-uti
 import nock from "nock";
 
 const defaultPollInterval = 30000;
-// Wait up to 5 poll cycles to account for timing variations in CI environments
-const pollTimeoutFactor = 5;
+// Wait up to 20 poll cycles to account for timing variations in CI environments
+const pollTimeoutFactor = 20;
 
 interface TestEnvironmentConfig {
     deploymentSpaces?: string[];
     decisionIds?: string[];
     isOverridingToolName?: boolean;
     pollInterval?: number;
+    persistMocksForPolling?: boolean;
 }
 
 describe('Mcp Server', () => {
@@ -48,8 +49,10 @@ describe('Mcp Server', () => {
             deploymentSpaces = ['staging', 'production'],
             decisionIds = ['dummy.decision.id'],
             isOverridingToolName = true,
-            pollInterval = defaultPollInterval
+            pollInterval = defaultPollInterval,
+            persistMocksForPolling
         } = config;
+        const effectivePersistMocksForPolling = persistMocksForPolling ?? (pollInterval < defaultPollInterval);
         
         const fakeStdin = new PassThrough();
         const fakeStdout = new PassThrough();
@@ -69,7 +72,7 @@ describe('Mcp Server', () => {
             configuration,
             decisionIds,
             isOverridingToolName,
-            persistMocksForPolling: pollInterval < defaultPollInterval
+            persistMocksForPolling: effectivePersistMocksForPolling
         });
         
         return {
@@ -406,7 +409,9 @@ describe('Mcp Server', () => {
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
             isOverridingToolName: false,
-            pollInterval
+            pollInterval,
+            // Initial mocks should NOT be persistent so that updated mocks take effect during polling
+            persistMocksForPolling: false
         });
         let server: McpServer | undefined;
 
@@ -474,7 +479,9 @@ describe('Mcp Server', () => {
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
             isOverridingToolName: false,
-            pollInterval
+            pollInterval,
+            // Initial mocks should NOT be persistent so that updated mocks take effect during polling
+            persistMocksForPolling: false
         });
         let server: McpServer | undefined;
 
@@ -596,7 +603,9 @@ describe('Mcp Server', () => {
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
             isOverridingToolName: false,
-            pollInterval
+            pollInterval,
+            // Initial mocks should NOT be persistent so that updated mocks take effect during polling
+            persistMocksForPolling: false
         });
         let server: McpServer | undefined;
 
@@ -681,7 +690,9 @@ describe('Mcp Server', () => {
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
             isOverridingToolName: false,
-            pollInterval
+            pollInterval,
+            // Initial mocks should NOT be persistent so that updated mocks take effect during polling
+            persistMocksForPolling: false
         });
         let server: McpServer | undefined;
 

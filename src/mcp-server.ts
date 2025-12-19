@@ -47,8 +47,6 @@ interface ToolDefinition {
     registeredTool: RegisteredTool; // Store the RegisteredTool object returned by registerDecisionServiceTools
 }
 
-const msInSecond = 1000;
-
 // Helper function to create a hash of the input schema for comparison
 function hashInputSchema(inputSchema: OpenAPIV3_1.SchemaObject): string {
     return JSON.stringify(inputSchema);
@@ -372,8 +370,7 @@ export async function createMcpServer(name: string, configuration: Configuration
     }
 
     // Start polling for tool changes
-    const pollInterval = configuration.pollInterval;
-    debug(`Starting tool change polling with interval: ${pollInterval}s`);
+    debug(`Now polling for tools change every ${configuration.formattedPollInterval()}`);
     const pollTimer = setInterval(async () => {
         debug("Polling for tool changes...");
         const hasChanges = await checkForToolChanges(server, configuration, toolDefinitions);
@@ -381,7 +378,7 @@ export async function createMcpServer(name: string, configuration: Configuration
             debug("Tool changes detected, sending notification to client");
             server.sendToolListChanged();
         }
-    }, pollInterval * msInSecond);
+    },  configuration.pollIntervalMs);
 
     // Clean up interval on server close
     const originalClose = server.close.bind(server);
