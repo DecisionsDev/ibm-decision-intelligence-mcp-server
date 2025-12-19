@@ -201,9 +201,8 @@ async function checkForToolChanges(
     server: McpServer,
     configuration: Configuration,
     currentToolDefinitions: ToolDefinition[]
-): Promise<boolean> {
+): Promise<void> {
     const newToolMetadata: Omit<ToolDefinition, 'registeredTool'>[] = [];
-    let hasChanges = false;
 
     try {
         for (const deploymentSpace of configuration.deploymentSpaces) {
@@ -236,7 +235,6 @@ async function checkForToolChanges(
             if (!newTool) {
                 debug(`The existing tool '${existingTool.name}' was removed from the server.`);
                 existingTool.registeredTool.remove();
-                hasChanges = true;
             }
         }
 
@@ -256,14 +254,12 @@ async function checkForToolChanges(
             if (!existingTool) {
                 // New tool detected - register only this specific tool
                 debug(`A new tool '${newToolMeta.name}' was added to the server.`);
-                hasChanges = true;
                 registerDecisionOperationTool(server, configuration, newToolMeta, currentToolDefinitions);
                 continue;
             }
             if (existingTool.inputSchemaHash !== newToolMeta.inputSchemaHash) {
                 // Tool schema changed - update it
                 debug(`The schema for the existing tool '{newToolMeta.name}' was changed`);
-                hasChanges = true;
 
                 // Use the OpenAPI document already stored in metadata
                 const openapi = newToolMeta.openapi;
@@ -309,17 +305,19 @@ async function checkForToolChanges(
                 debug(`No change was detected for the existing tool '${newToolMeta.name}`);
             }
         }
-
-        return hasChanges;
     } catch (error) {
-        debug("Error checking for tool changes:", String(error));
-        return false;
+        handleError("Error checking for tool changes: ", error);
     }
 }
 
 function registerToolHandlers(server: McpServer) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (server as any).setToolRequestHandlers();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function handleError(label: string, error: any) {
+    debug(`${label}:`, error instanceof Error ? error.message : String(error));
 }
 
 export async function createMcpServer(name: string, configuration: Configuration): Promise<{ server: McpServer, transport?: StdioServerTransport, httpServer?: http.Server }> {
@@ -373,12 +371,8 @@ export async function createMcpServer(name: string, configuration: Configuration
     debug(`Now polling for tools change every ${configuration.formattedPollInterval()}`);
     const pollTimer = setInterval(async () => {
         debug("Polling for tool changes...");
-        const hasChanges = await checkForToolChanges(server, configuration, toolDefinitions);
-        if (hasChanges) {
-            debug("Tool changes detected, sending notification to client");
-            server.sendToolListChanged();
-        }
-    },  configuration.pollIntervalMs);
+        await checkForToolChanges(server, configuration, toolDefinitions);
+    }, configuration.pollIntervalMs);
 
     // Clean up interval on server close
     const originalClose = server.close.bind(server);

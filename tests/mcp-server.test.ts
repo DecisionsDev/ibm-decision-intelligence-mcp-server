@@ -23,11 +23,12 @@ import {createMcpServer} from "../src/mcp-server.js";
 import {PassThrough, Readable, Writable} from 'stream';
 import {Credentials} from "../src/credentials.js";
 import {setupNockMocks, validateClient, createAndConnectClient} from "./test-utils.js";
+import {setDebug} from "../src/debug.js";
 import nock from "nock";
 
 const defaultPollInterval = 30000;
-// Wait up to 20 poll cycles to account for timing variations in CI environments
-const pollTimeoutFactor = 20;
+// Wait up to 5 poll cycles to account for timing variations in CI environments
+const pollTimeoutFactor = 5;
 
 interface TestEnvironmentConfig {
     deploymentSpaces?: string[];
@@ -404,7 +405,7 @@ describe('Mcp Server', () => {
     test('should detect and notify when a new tool is added', async () => {
         const initialDecisionIds = ['dummy.decision.id'];
         const deploymentSpace = 'staging';
-        const pollInterval = 100;
+        const pollInterval = 50;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -453,7 +454,7 @@ describe('Mcp Server', () => {
                 persistMocksForPolling: true
             });
 
-            // Wait for the notification with timeout (poll interval is 100ms)
+            // Wait for the notification with timeout (poll interval is 50ms)
            await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
            expect(notificationReceived).toBe(true);
 
@@ -474,7 +475,7 @@ describe('Mcp Server', () => {
         const updatedDecisionIds = ['dummy.decision.id'];
         const initialDecisionIds = [...updatedDecisionIds, 'new.decision.id'];
         const deploymentSpace = 'staging';
-        const pollInterval = 100;
+        const pollInterval = 50;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -520,7 +521,7 @@ describe('Mcp Server', () => {
                 isOverridingToolName: false
             });
 
-            // Wait for the notification with timeout (poll interval is 100ms)
+            // Wait for the notification with timeout (poll interval is 50ms)
             await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
             expect(notificationReceived).toBe(true);
 
@@ -540,7 +541,7 @@ describe('Mcp Server', () => {
     test('should not notify client when no tool is changed', async () => {
         const initialDecisionIds = ['dummy.decision.id', 'new.decision.id'];
         const deploymentSpace = 'toto';
-        const pollInterval = 100;
+        const pollInterval = 50;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -575,7 +576,7 @@ describe('Mcp Server', () => {
                 }
             };
 
-            // Wait for potential notification (poll interval is 100ms, we wait for 2 cycles)
+            // Wait for potential notification (poll interval is 50ms, we wait for 5 cycles)
             await new Promise(resolve => setTimeout(resolve, pollInterval * pollTimeoutFactor));
 
             // Verify no notification was received
@@ -595,10 +596,11 @@ describe('Mcp Server', () => {
         }
     });
 
+
     test('should detect and notify when a tool schema is changed', async () => {
         const initialDecisionIds = ['dummy.decision.id'];
         const deploymentSpace = 'staging';
-        const pollInterval = 100;
+        const pollInterval = 50;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -655,7 +657,7 @@ describe('Mcp Server', () => {
                 }
             });
 
-            // Wait for the notification with timeout (poll interval is 100ms)
+            // Wait for the notification with timeout (poll interval is 50ms)
             await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
             expect(notificationReceived).toBe(true);
 
@@ -685,7 +687,7 @@ describe('Mcp Server', () => {
         
         const initialDecisionIds = ['dummy.decision.id'];
         const deploymentSpace = 'staging';
-        const pollInterval = 100;
+        const pollInterval = 50;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -794,7 +796,7 @@ describe('Mcp Server', () => {
                 }
             });
 
-            // Wait for the notification with timeout (poll interval is 100ms)
+            // Wait for the notification with timeout (poll interval is 50ms)
             await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
             expect(notificationReceived).toBe(true);
 
@@ -816,6 +818,68 @@ describe('Mcp Server', () => {
             // Verify no duplicate tool names exist
             const uniqueToolNames = new Set(finalToolNames);
             expect(uniqueToolNames.size).toBe(finalToolCount);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should handle errors in checkForToolChanges gracefully', async () => {
+        const deploymentSpace = 'staging';
+        const pollInterval = 50;
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: ['dummy.decision.id'],
+            isOverridingToolName: false,
+            pollInterval,
+            persistMocksForPolling: false
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(1);
+
+            // Set up a promise to ensure NO notification is received
+            let notificationReceived = false;
+            const originalOnMessage = clientTransport.onmessage;
+
+            clientTransport.onmessage = (message: JSONRPCMessage) => {
+                if (originalOnMessage) {
+                    originalOnMessage(message);
+                }
+
+                if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                    notificationReceived = true;
+                }
+            };
+
+            // Clear all mocks to simulate API failure during polling
+            nock.cleanAll();
+
+            // Wait for potential notification (poll interval is 50ms, we wait for 5 cycles)
+            await new Promise(resolve => setTimeout(resolve, pollInterval * pollTimeoutFactor));
+
+            // Verify no notification was received (error was handled gracefully)
+            expect(notificationReceived).toBe(false);
+
+            // Verify server is still operational by checking connection status
+            expect(server.isConnected()).toBe(true);
+
+            // Verify we can still list tools successfully (server is responsive)
+            const finalToolsResponse = await client.listTools();
+            expect(finalToolsResponse).toEqual(initialToolsResponse);
 
             await client.close();
         } finally {
