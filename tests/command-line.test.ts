@@ -1210,7 +1210,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--poll-interval', '60000'
+                '--decisions-poll-interval', '60000'
             ]);
 
             expect(mockDebug).toHaveBeenCalledWith('DECISIONS_POLL_INTERVAL=60000');
