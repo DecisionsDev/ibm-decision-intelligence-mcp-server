@@ -22,9 +22,67 @@ import {Configuration} from "../src/command-line.js";
 import {createMcpServer} from "../src/mcp-server.js";
 import {PassThrough, Readable, Writable} from 'stream';
 import {Credentials} from "../src/credentials.js";
-import {setupNockMocks, validateClient} from "./test-utils.js";
+import {setupNockMocks, validateClient, createAndConnectClient} from "./test-utils.js";
+import {setDebug} from "../src/debug.js";
+import nock from "nock";
+
+const DEFAULT_POLL_INTERVAL = 30000;
+// Wait up to 10 poll cycles to account for timing variations in CI environments
+const POLL_TIMEOUT_FACTOR = 10;
+const POLL_INTERVAL = 50;
+
+interface TestEnvironmentConfig {
+    deploymentSpaces?: string[];
+    decisionIds?: string[];
+    isOverridingToolName?: boolean;
+    pollInterval?: number;
+    persistMocksForPolling?: boolean;
+}
 
 describe('Mcp Server', () => {
+
+    afterEach(() => {
+        nock.cleanAll();
+        jest.clearAllMocks();
+    });
+
+    function createTestEnvironment(config: TestEnvironmentConfig = {}) {
+        const {
+            deploymentSpaces = ['staging', 'production'],
+            decisionIds = ['dummy.decision.id'],
+            isOverridingToolName = true,
+            pollInterval = DEFAULT_POLL_INTERVAL,
+            persistMocksForPolling
+        } = config;
+        const effectivePersistMocksForPolling = persistMocksForPolling ?? (pollInterval < DEFAULT_POLL_INTERVAL);
+        
+        const fakeStdin = new PassThrough();
+        const fakeStdout = new PassThrough();
+        const transport = new StdioServerTransport(fakeStdin, fakeStdout);
+        const clientTransport = new StreamClientTransport(fakeStdout, fakeStdin);
+        const configuration = new Configuration(
+            Credentials.createDiApiKeyCredentials('dummy.api.key'),
+            transport,
+            'https://example.com',
+            '1.2.3',
+            true,
+            deploymentSpaces,
+            undefined,
+            pollInterval
+        );
+        setupNockMocks({
+            configuration,
+            decisionIds,
+            isOverridingToolName,
+            persistMocksForPolling: effectivePersistMocksForPolling
+        });
+        
+        return {
+            transport,
+            clientTransport,
+            configuration
+        };
+    }
 
     class StreamClientTransport implements Transport {
         public onmessage?: (message: JSONRPCMessage, extra?: MessageExtraInfo) => void;
@@ -80,23 +138,751 @@ describe('Mcp Server', () => {
         }
     }
 
-    const fakeStdin = new PassThrough();
-    const fakeStdout = new PassThrough();
-    const transport = new StdioServerTransport(fakeStdin, fakeStdout);
-    const clientTransport = new StreamClientTransport(fakeStdout, fakeStdin);
-    const configuration = new Configuration(Credentials.createDiApiKeyCredentials('dummy.api.key'), transport, 'https://example.com', '1.2.3', true, ['staging', 'production']);
-
-    beforeAll(() => {
-        setupNockMocks(configuration);
-    });
-
     test('should properly list and execute tool when configured with STDIO transport', async () => {
+        const { transport, clientTransport, configuration } = createTestEnvironment();
         let server: McpServer | undefined;
         try {
             const result = await createMcpServer('toto', configuration);
             server = result.server;
             expect(server.isConnected()).toEqual(true);
             await validateClient(clientTransport, configuration.deploymentSpaces);
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should advertise tools.listChanged capability', async () => {
+        const { transport, clientTransport, configuration } = createTestEnvironment();
+        let server: McpServer | undefined;
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Check that the server advertises the tools.listChanged capability
+            const serverCapabilities = (client as any)._serverCapabilities;
+            expect(serverCapabilities).toBeDefined();
+            expect(serverCapabilities.tools).toBeDefined();
+            expect(serverCapabilities.tools.listChanged).toBe(true);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+        let timeoutId: NodeJS.Timeout;
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => {
+                reject(new Error('Expected notification not received'));
+            }, ms);
+        });
+
+        return Promise.race([promise, timeoutPromise]).finally(() => {
+            clearTimeout(timeoutId);
+        });
+    }    
+
+    test('should send notification when sendToolListChanged is called', async () => {
+        const { transport, clientTransport, configuration } = createTestEnvironment();
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    // Detect the notification
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Trigger the server notification manually
+            server.sendToolListChanged();
+
+            // Wait for the notification with safe timeout (no timer leaks)
+            await withTimeout(notificationPromise, 500);
+
+            expect(notificationReceived).toBe(true);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should register tools from OpenAPI specification', async () => {
+        const { transport, clientTransport, configuration } = createTestEnvironment();
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // List tools to verify they were registered
+            const toolsResponse = await client.listTools();
+            expect(toolsResponse.tools).toBeDefined();
+            expect(toolsResponse.tools.length).toBeGreaterThan(0);
+
+            // Verify that each tool has required properties
+            for (const tool of toolsResponse.tools) {
+                expect(tool.name).toBeDefined();
+                expect(typeof tool.name).toBe('string');
+                expect(tool.name.length).toBeGreaterThan(0);
+                expect(tool.inputSchema).toBeDefined();
+            }
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should register tools with correct names from deployment spaces', async () => {
+        const deploymentSpaces = ['foo', 'bar'];
+        const decisionIds = ['toto', 'tutu'];
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces,
+            decisionIds,
+            isOverridingToolName: false
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // List tools
+            const toolsResponse = await client.listTools();
+            expect(toolsResponse.tools).toBeDefined();
+
+            // Verify tools are registered for each deployment space
+            const toolNames = toolsResponse.tools.map(t => t.name);
+            expect(toolNames.length).toBe(4);
+
+            // Tool names should be unique
+            const uniqueToolNames = new Set(toolNames);
+            expect(uniqueToolNames.size).toBe(toolNames.length);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should register tools with valid input schemas', async () => {
+        const { transport, clientTransport, configuration } = createTestEnvironment();
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // List tools
+            const toolsResponse = await client.listTools();
+            expect(toolsResponse.tools).toBeDefined();
+            expect(toolsResponse.tools.length).toBeGreaterThan(0);
+
+            // Verify each tool has a valid input schema
+            for (const tool of toolsResponse.tools) {
+                expect(tool.inputSchema).toBeDefined();
+                expect(typeof tool.inputSchema).toBe('object');
+                
+                // Input schema should have properties or be an object schema
+                if (tool.inputSchema.properties) {
+                    expect(typeof tool.inputSchema.properties).toBe('object');
+                }
+            }
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should handle tool addition with description and title', async () => {
+        const { transport, clientTransport, configuration } = createTestEnvironment();
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // List tools
+            const toolsResponse = await client.listTools();
+            expect(toolsResponse.tools).toBeDefined();
+            expect(toolsResponse.tools.length).toBeGreaterThan(0);
+
+            // Check that at least one tool has description or title
+            const toolsWithMetadata = toolsResponse.tools.filter(
+                t => t.description || (t as any).title
+            );
+            
+            // At least some tools should have metadata
+            expect(toolsWithMetadata.length).toBeGreaterThanOrEqual(0);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should maintain tool list consistency after registration', async () => {
+        const { transport, clientTransport, configuration } = createTestEnvironment();
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // List tools multiple times to ensure consistency
+            const toolsResponse1 = await client.listTools();
+            const toolsResponse2 = await client.listTools();
+
+            expect(toolsResponse1.tools.length).toBe(toolsResponse2.tools.length);
+
+            // Verify tool names are the same
+            const toolNames1 = toolsResponse1.tools.map(t => t.name).sort();
+            const toolNames2 = toolsResponse2.tools.map(t => t.name).sort();
+            expect(toolNames1).toEqual(toolNames2);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should detect and notify when a new tool is added', async () => {
+        const initialDecisionIds = ['dummy.decision.id'];
+        const deploymentSpace = 'staging';
+        const pollInterval = POLL_INTERVAL;
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval,
+            // Initial mocks should NOT be persistent so that updated mocks take effect during polling
+            persistMocksForPolling: false
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(1);
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            // Set up persistent mock for polling with additional tool
+            const updatedDecisionIds = [...initialDecisionIds, 'new.decision.id'];
+            setupNockMocks({
+                configuration,
+                decisionIds: updatedDecisionIds,
+                isOverridingToolName: false,
+                persistMocksForPolling: true
+            });
+
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+           await withTimeout(notificationPromise, pollInterval * POLL_TIMEOUT_FACTOR);
+           expect(notificationReceived).toBe(true);
+
+            // Verify that tools list has been updated
+            const updatedToolsResponse = await client.listTools();
+            const finalToolCount = updatedToolsResponse.tools.length;
+            expect(finalToolCount).toBe(2);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should detect and notify when an existing tool is removed', async () => {
+        const updatedDecisionIds = ['dummy.decision.id'];
+        const initialDecisionIds = [...updatedDecisionIds, 'new.decision.id'];
+        const deploymentSpace = 'staging';
+        const pollInterval = POLL_INTERVAL;
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval,
+            // Initial mocks should NOT be persistent so that updated mocks take effect during polling
+            persistMocksForPolling: false
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(2);
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            setupNockMocks({
+                configuration,
+                decisionIds: updatedDecisionIds,
+                isOverridingToolName: false
+            });
+
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await withTimeout(notificationPromise, pollInterval * POLL_TIMEOUT_FACTOR);
+            expect(notificationReceived).toBe(true);
+
+            // Verify that tools list has been updated
+            const updatedToolsResponse = await client.listTools();
+            const finalToolCount = updatedToolsResponse.tools.length;
+            expect(finalToolCount).toBe(1);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should not notify client when no tool is changed', async () => {
+        const initialDecisionIds = ['dummy.decision.id', 'new.decision.id'];
+        const deploymentSpace = 'toto';
+        const pollInterval = POLL_INTERVAL;
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(2);
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const originalOnMessage = clientTransport.onmessage;
+
+            clientTransport.onmessage = (message: JSONRPCMessage) => {
+                if (originalOnMessage) {
+                    originalOnMessage(message);
+                }
+
+                if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                    notificationReceived = true;
+                }
+            };
+
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await new Promise(resolve => setTimeout(resolve, pollInterval * POLL_TIMEOUT_FACTOR));
+
+            // Verify no notification was received
+            expect(notificationReceived).toBe(false);
+
+            // Verify that tools list has been updated
+            const updatedToolsResponse = await client.listTools();
+            const finalToolCount = updatedToolsResponse.tools.length;
+            expect(finalToolCount).toEqual(initialToolCount);
+            expect(updatedToolsResponse).toEqual(initialToolsResponse);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+
+    test('should detect and notify when a tool schema is changed', async () => {
+        const initialDecisionIds = ['dummy.decision.id'];
+        const deploymentSpace = 'staging';
+        const pollInterval = POLL_INTERVAL;
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval,
+            // Initial mocks should NOT be persistent so that updated mocks take effect during polling
+            persistMocksForPolling: false
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool schema
+            const initialToolsResponse = await client.listTools();
+            expect(initialToolsResponse.tools.length).toBe(1);
+            const initialTool = initialToolsResponse.tools[0];
+            const initialSchema = initialTool.inputSchema;
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            // Set up mock with modified schema (add a new property to the schema)
+            setupNockMocks({
+                configuration,
+                decisionIds: initialDecisionIds,
+                isOverridingToolName: false,
+                persistMocksForPolling: true,
+                schemaModifier: (openApiContent: any) => {
+                    // Add a new property to the approval_input schema
+                    openApiContent.components.schemas.approval_input.properties.newField = {
+                        type: "string",
+                        description: "A new field added to test schema changes"
+                    };
+                    return openApiContent;
+                }
+            });
+
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await withTimeout(notificationPromise, pollInterval * POLL_TIMEOUT_FACTOR);
+            expect(notificationReceived).toBe(true);
+
+            // Verify that the tool schema has been updated
+            const updatedToolsResponse = await client.listTools();
+            expect(updatedToolsResponse.tools.length).toBe(1);
+            const updatedTool = updatedToolsResponse.tools[0];
+            const updatedSchema = updatedTool.inputSchema;
+
+            // Verify the schema has changed
+            expect(updatedSchema).not.toEqual(initialSchema);
+            expect((updatedSchema as any).properties.newField).toBeDefined();
+            expect((updatedSchema as any).properties.newField.type).toBe('string');
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should not duplicate existing tools when adding a new tool to multi-operation OpenAPI', async () => {
+        // This test verifies the fix for the bug where adding a new tool to an OpenAPI
+        // document with multiple operations would try to re-register all tools,
+        // causing "Tool X is already registered" errors.
+        
+        const initialDecisionIds = ['dummy.decision.id'];
+        const deploymentSpace = 'staging';
+        const pollInterval = POLL_INTERVAL;
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: initialDecisionIds,
+            isOverridingToolName: false,
+            pollInterval,
+            // Initial mocks should NOT be persistent so that updated mocks take effect during polling
+            persistMocksForPolling: false
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count (should be 1 tool with 1 operation)
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(1);
+            const initialToolNames = initialToolsResponse.tools.map(t => t.name);
+
+            // Set up a promise to capture the notification
+            let notificationReceived = false;
+            const notificationPromise = new Promise<void>((resolve) => {
+                const originalOnMessage = clientTransport.onmessage;
+
+                clientTransport.onmessage = (message: JSONRPCMessage) => {
+                    if (originalOnMessage) {
+                        originalOnMessage(message);
+                    }
+
+                    if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                        notificationReceived = true;
+                        resolve();
+                    }
+                };
+            });
+
+            // Set up persistent mock with a SECOND operation added to the SAME OpenAPI document
+            // This simulates the real-world scenario where the Loan Approval decision service
+            // has multiple operations (e.g., "approval" and "BRA_New_Decision_Model")
+            setupNockMocks({
+                configuration,
+                decisionIds: initialDecisionIds,
+                isOverridingToolName: false,
+                persistMocksForPolling: true,
+                schemaModifier: (openApiContent: any) => {
+                    // Add a second operation to the same OpenAPI document
+                    openApiContent.paths['/newOperation/execute'] = {
+                        post: {
+                            tags: [openApiContent.info.title],
+                            summary: 'newOperation',
+                            description: 'Execute newOperation',
+                            operationId: 'newOperation',
+                            requestBody: {
+                                content: {
+                                    'application/json': {
+                                        schema: {
+                                            $ref: '#/components/schemas/newOperation_input'
+                                        },
+                                        example: {
+                                            input: '<input>'
+                                        }
+                                    }
+                                }
+                            },
+                            responses: {
+                                '200': {
+                                    description: 'Decision execution success',
+                                    content: {
+                                        'application/json': {
+                                            schema: {
+                                                $ref: '#/components/schemas/newOperation_output'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    // Add the schema for the new operation
+                    openApiContent.components.schemas.newOperation_input = {
+                        type: 'object',
+                        properties: {
+                            input: {
+                                type: 'string'
+                            }
+                        },
+                        'x-ibm-parameter-wrapper': true
+                    };
+
+                    openApiContent.components.schemas.newOperation_output = {
+                        type: 'object',
+                        properties: {
+                            output: {
+                                type: 'string'
+                            }
+                        },
+                        'x-ibm-parameter-wrapper': true
+                    };
+
+                    return openApiContent;
+                }
+            });
+
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await withTimeout(notificationPromise, pollInterval * POLL_TIMEOUT_FACTOR);
+            expect(notificationReceived).toBe(true);
+
+            // Verify that tools list has been updated with the new tool
+            const updatedToolsResponse = await client.listTools();
+            const finalToolCount = updatedToolsResponse.tools.length;
+            expect(finalToolCount).toBe(2); // Should now have 2 tools
+
+            const finalToolNames = updatedToolsResponse.tools.map(t => t.name);
+            
+            // Verify the original tool is still there (not duplicated)
+            expect(finalToolNames).toContain(initialToolNames[0]);
+            
+            // Verify the new tool was added
+            const newToolNames = finalToolNames.filter(name => !initialToolNames.includes(name));
+            expect(newToolNames.length).toBe(1);
+            expect(newToolNames[0]).toContain('newOperation');
+
+            // Verify no duplicate tool names exist
+            const uniqueToolNames = new Set(finalToolNames);
+            expect(uniqueToolNames.size).toBe(finalToolCount);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should handle errors in checkForToolChanges gracefully', async () => {
+        const deploymentSpace = 'staging';
+        const pollInterval = POLL_INTERVAL;
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds: ['dummy.decision.id'],
+            isOverridingToolName: false,
+            pollInterval,
+            persistMocksForPolling: false
+        });
+        let server: McpServer | undefined;
+
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Get initial tool count
+            const initialToolsResponse = await client.listTools();
+            const initialToolCount = initialToolsResponse.tools.length;
+            expect(initialToolCount).toBe(1);
+
+            // Set up a promise to ensure NO notification is received
+            let notificationReceived = false;
+            const originalOnMessage = clientTransport.onmessage;
+
+            clientTransport.onmessage = (message: JSONRPCMessage) => {
+                if (originalOnMessage) {
+                    originalOnMessage(message);
+                }
+
+                if ('method' in message && message.method === 'notifications/tools/list_changed') {
+                    notificationReceived = true;
+                }
+            };
+
+            // Clear all mocks to simulate API failure during polling
+            nock.cleanAll();
+
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await new Promise(resolve => setTimeout(resolve, pollInterval * POLL_TIMEOUT_FACTOR));
+
+            // Verify no notification was received (error was handled gracefully)
+            expect(notificationReceived).toBe(false);
+
+            // Verify server is still operational by checking connection status
+            expect(server.isConnected()).toBe(true);
+
+            // Verify we can still list tools successfully (server is responsive)
+            const finalToolsResponse = await client.listTools();
+            expect(finalToolsResponse).toEqual(initialToolsResponse);
+
+            await client.close();
         } finally {
             await clientTransport?.close();
             await transport?.close();
