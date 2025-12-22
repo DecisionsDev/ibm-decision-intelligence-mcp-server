@@ -29,7 +29,7 @@ import nock from "nock";
 const DEFAULT_POLL_INTERVAL = 30000;
 // Wait up to 10 poll cycles to account for timing variations in CI environments
 const POLL_TIMEOUT_FACTOR = 10;
-const POLL_INTERVAL = 10;
+const POLL_INTERVAL = 50;
 
 interface TestEnvironmentConfig {
     deploymentSpaces?: string[];
