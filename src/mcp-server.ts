@@ -211,7 +211,7 @@ function removeDeletedTools(currentToolDefinitions: ToolDefinition[], newToolsMa
 }
 
 function updateExistingTool(configuration: Configuration, existingTool: ToolDefinition, newToolMeta: Omit<ToolDefinition, 'registeredTool'>): void {
-    // Update the registered tool with new schema and callback
+    // Update the registered tool with its new schema and callback
     // The inputSchema is already validated and processed in newToolMeta
     existingTool.registeredTool.update({
         title: newToolMeta.title,
