@@ -26,9 +26,10 @@ import {setupNockMocks, validateClient, createAndConnectClient} from "./test-uti
 import {setDebug} from "../src/debug.js";
 import nock from "nock";
 
-const defaultPollInterval = 30000;
-// Wait up to 5 poll cycles to account for timing variations in CI environments
-const pollTimeoutFactor = 5;
+const DEFAULT_POLL_INTERVAL = 30000;
+// Wait up to 10 poll cycles to account for timing variations in CI environments
+const POLL_TIMEOUT_FACTOR = 10;
+const POLL_INTERVAL = 10;
 
 interface TestEnvironmentConfig {
     deploymentSpaces?: string[];
@@ -50,10 +51,10 @@ describe('Mcp Server', () => {
             deploymentSpaces = ['staging', 'production'],
             decisionIds = ['dummy.decision.id'],
             isOverridingToolName = true,
-            pollInterval = defaultPollInterval,
+            pollInterval = DEFAULT_POLL_INTERVAL,
             persistMocksForPolling
         } = config;
-        const effectivePersistMocksForPolling = persistMocksForPolling ?? (pollInterval < defaultPollInterval);
+        const effectivePersistMocksForPolling = persistMocksForPolling ?? (pollInterval < DEFAULT_POLL_INTERVAL);
         
         const fakeStdin = new PassThrough();
         const fakeStdout = new PassThrough();
@@ -405,7 +406,7 @@ describe('Mcp Server', () => {
     test('should detect and notify when a new tool is added', async () => {
         const initialDecisionIds = ['dummy.decision.id'];
         const deploymentSpace = 'staging';
-        const pollInterval = 50;
+        const pollInterval = POLL_INTERVAL;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -454,8 +455,8 @@ describe('Mcp Server', () => {
                 persistMocksForPolling: true
             });
 
-            // Wait for the notification with timeout (poll interval is 50ms)
-           await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+           await withTimeout(notificationPromise, pollInterval * POLL_TIMEOUT_FACTOR);
            expect(notificationReceived).toBe(true);
 
             // Verify that tools list has been updated
@@ -475,7 +476,7 @@ describe('Mcp Server', () => {
         const updatedDecisionIds = ['dummy.decision.id'];
         const initialDecisionIds = [...updatedDecisionIds, 'new.decision.id'];
         const deploymentSpace = 'staging';
-        const pollInterval = 50;
+        const pollInterval = POLL_INTERVAL;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -521,8 +522,8 @@ describe('Mcp Server', () => {
                 isOverridingToolName: false
             });
 
-            // Wait for the notification with timeout (poll interval is 50ms)
-            await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await withTimeout(notificationPromise, pollInterval * POLL_TIMEOUT_FACTOR);
             expect(notificationReceived).toBe(true);
 
             // Verify that tools list has been updated
@@ -541,7 +542,7 @@ describe('Mcp Server', () => {
     test('should not notify client when no tool is changed', async () => {
         const initialDecisionIds = ['dummy.decision.id', 'new.decision.id'];
         const deploymentSpace = 'toto';
-        const pollInterval = 50;
+        const pollInterval = POLL_INTERVAL;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -576,8 +577,8 @@ describe('Mcp Server', () => {
                 }
             };
 
-            // Wait for potential notification (poll interval is 50ms, we wait for 5 cycles)
-            await new Promise(resolve => setTimeout(resolve, pollInterval * pollTimeoutFactor));
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await new Promise(resolve => setTimeout(resolve, pollInterval * POLL_TIMEOUT_FACTOR));
 
             // Verify no notification was received
             expect(notificationReceived).toBe(false);
@@ -600,7 +601,7 @@ describe('Mcp Server', () => {
     test('should detect and notify when a tool schema is changed', async () => {
         const initialDecisionIds = ['dummy.decision.id'];
         const deploymentSpace = 'staging';
-        const pollInterval = 50;
+        const pollInterval = POLL_INTERVAL;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -657,8 +658,8 @@ describe('Mcp Server', () => {
                 }
             });
 
-            // Wait for the notification with timeout (poll interval is 50ms)
-            await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await withTimeout(notificationPromise, pollInterval * POLL_TIMEOUT_FACTOR);
             expect(notificationReceived).toBe(true);
 
             // Verify that the tool schema has been updated
@@ -687,7 +688,7 @@ describe('Mcp Server', () => {
         
         const initialDecisionIds = ['dummy.decision.id'];
         const deploymentSpace = 'staging';
-        const pollInterval = 50;
+        const pollInterval = POLL_INTERVAL;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: initialDecisionIds,
@@ -796,8 +797,8 @@ describe('Mcp Server', () => {
                 }
             });
 
-            // Wait for the notification with timeout (poll interval is 50ms)
-            await withTimeout(notificationPromise, pollInterval * pollTimeoutFactor);
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await withTimeout(notificationPromise, pollInterval * POLL_TIMEOUT_FACTOR);
             expect(notificationReceived).toBe(true);
 
             // Verify that tools list has been updated with the new tool
@@ -829,7 +830,7 @@ describe('Mcp Server', () => {
 
     test('should handle errors in checkForToolChanges gracefully', async () => {
         const deploymentSpace = 'staging';
-        const pollInterval = 50;
+        const pollInterval = POLL_INTERVAL;
         const { transport, clientTransport, configuration } = createTestEnvironment({
             deploymentSpaces: [deploymentSpace],
             decisionIds: ['dummy.decision.id'],
@@ -868,8 +869,8 @@ describe('Mcp Server', () => {
             // Clear all mocks to simulate API failure during polling
             nock.cleanAll();
 
-            // Wait for potential notification (poll interval is 50ms, we wait for 5 cycles)
-            await new Promise(resolve => setTimeout(resolve, pollInterval * pollTimeoutFactor));
+            // Wait for potential notification (poll interval is 50ms, we wait for 10 cycles)
+            await new Promise(resolve => setTimeout(resolve, pollInterval * POLL_TIMEOUT_FACTOR));
 
             // Verify no notification was received (error was handled gracefully)
             expect(notificationReceived).toBe(false);
