@@ -174,3 +174,12 @@ export async function validateClient(clientTransport: Transport, deploymentSpace
         await client.close();
     }
 }
+
+export async function createAndConnectClient(clientTransport: Transport, name: string = "client", version: string = "1.0.0") {
+    const client = new Client({
+        name: name,
+        version: version,
+    });
+    await client.connect(clientTransport);
+    return client;
+}

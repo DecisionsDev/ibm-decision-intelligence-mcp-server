@@ -121,12 +121,22 @@ async function registerTool(server: McpServer, configuration: Configuration, dep
     }
 }
 
+function registerToolHandlers(server: McpServer) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (server as any).setToolRequestHandlers();
+}
+
 export async function createMcpServer(name: string, configuration: Configuration): Promise<{ server: McpServer, transport?: StdioServerTransport, httpServer?: http.Server }> {
     const version = configuration.version;
     const server = new McpServer({
         name: name,
         version: version
     });
+
+    // IMPORTANT: Initialize tool handlers BEFORE registering any tools or connecting to transport.
+    // This ensures the tools/list endpoint is available even if no tools are registered yet,
+    // preventing "Method not found" errors when clients call list_tools() on empty deployment spaces.
+    registerToolHandlers(server);
 
     const toolNames: string[] = [];
     for (const deploymentSpace of configuration.deploymentSpaces) {
