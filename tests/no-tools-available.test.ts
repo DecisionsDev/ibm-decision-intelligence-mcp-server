@@ -35,7 +35,7 @@ import nock from "nock";
  * - The tools/list request handler doesn't exist
  * - Client's list_tools() call fails with "Method not found"
  */
-describe.skip('STDIO MCP server with no tools intially available', () => {
+describe('STDIO MCP server with no tools intially available', () => {
 
     afterEach(() => {
         nock.cleanAll();
