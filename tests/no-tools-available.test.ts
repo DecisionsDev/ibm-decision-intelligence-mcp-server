@@ -167,4 +167,65 @@ describe('STDIO MCP server with no tools intially available', () => {
             await server?.close();
         }
     });
+
+    test('should advertise tools.listChanged capability even with no tools', async () => {
+        const { transport, clientTransport, configuration } = createEmptyDeploymentSpaceEnvironment();
+        let server: McpServer | undefined;
+        
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Check that the server advertises the tools.listChanged capability
+            // even when no tools are available
+            const serverCapabilities = (client as any)._serverCapabilities;
+            expect(serverCapabilities).toBeDefined();
+            expect(serverCapabilities.tools).toBeDefined();
+            expect(serverCapabilities.tools.listChanged).toBe(true);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
+
+    test('should allow tools to be added dynamically after initialization with no tools', async () => {
+        const { transport, clientTransport, configuration } = createEmptyDeploymentSpaceEnvironment();
+        let server: McpServer | undefined;
+        
+        try {
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // Initially no tools
+            let toolList = await client.listTools();
+            expect(toolList.tools).toHaveLength(0);
+
+            // Dynamically register a tool (simulating a tool becoming available)
+            server.registerTool('dynamic-tool', {
+                description: 'A dynamically added tool'
+            }, async () => ({
+                content: [{ type: 'text', text: 'Dynamic tool executed' }]
+            }));
+
+            // Now we should be able to list tools and see the new one
+            toolList = await client.listTools();
+            expect(toolList.tools).toHaveLength(1);
+            expect(toolList.tools[0].name).toBe('dynamic-tool');
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
 });
