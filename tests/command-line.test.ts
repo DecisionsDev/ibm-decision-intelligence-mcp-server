@@ -1123,7 +1123,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '60'
+                '--decision-service-poll-interval', '60'
             ]);
 
             // 60 seconds -> 60000 milliseconds
@@ -1149,7 +1149,7 @@ describe('CLI Configuration', () => {
                     '--url', url,
                     '--di-apikey', 'validkey123',
                     '--transport', 'STDIO',
-                    '--decisions-poll-interval', 'invalid'
+                    '--decision-service-poll-interval', 'invalid'
                 ]);
             }).toThrow("Invalid poll interval: 'invalid'. Must be a valid number in seconds.");
         });
@@ -1162,7 +1162,7 @@ describe('CLI Configuration', () => {
                     '--url', url,
                     '--di-apikey', 'validkey123',
                     '--transport', 'STDIO',
-                    '--decisions-poll-interval', invalidPollInterval
+                    '--decision-service-poll-interval', invalidPollInterval
                 ]);
             }).toThrow(`Invalid poll interval: '${invalidPollInterval}'. Must be at least 1 second.`);
         });
@@ -1173,14 +1173,14 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '1'
+                '--decision-service-poll-interval', '1'
             ]);
 
             expect(config.pollIntervalMs).toBe(1000);
         });
 
         test('should use poll interval from environment variable (seconds externally, ms internally)', () => {
-            process.env.DECISIONS_POLL_INTERVAL = '45';
+            process.env.DECISION_SERVICE_POLL_INTERVAL = '45';
 
             const config = createConfiguration(version, [
                 'node', 'cli.js',
@@ -1193,14 +1193,14 @@ describe('CLI Configuration', () => {
         });
 
         test('should prioritize CLI argument over environment variable', () => {
-            process.env.DECISIONS_POLL_INTERVAL = '45';
+            process.env.DECISION_SERVICE_POLL_INTERVAL = '45';
 
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '60'
+                '--decision-service-poll-interval', '60'
             ]);
 
             expect(config.pollIntervalMs).toBe(60000);
@@ -1212,10 +1212,10 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '60'
+                '--decision-service-poll-interval', '60'
             ]);
 
-            expect(mockDebug).toHaveBeenCalledWith('DECISIONS_POLL_INTERVAL=60');
+            expect(mockDebug).toHaveBeenCalledWith('DECISION_SERVICE_POLL_INTERVAL=60');
         });
     });
 
@@ -1242,7 +1242,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '1'
+                '--decision-service-poll-interval', '1'
             ]);
 
             expect(config.formattedPollInterval()).toBe('1s');
@@ -1254,7 +1254,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '30'
+                '--decision-service-poll-interval', '30'
             ]);
 
             expect(config.formattedPollInterval()).toBe('30s');
@@ -1282,7 +1282,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '60'
+                '--decision-service-poll-interval', '60'
             ]);
 
             expect(config.formattedPollInterval()).toBe('1min');
@@ -1294,7 +1294,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '120'
+                '--decision-service-poll-interval', '120'
             ]);
 
             expect(config.formattedPollInterval()).toBe('2min');
@@ -1306,7 +1306,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '90'
+                '--decision-service-poll-interval', '90'
             ]);
 
             expect(config.formattedPollInterval()).toBe('1min 30s');
@@ -1345,7 +1345,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '300'
+                '--decision-service-poll-interval', '300'
             ]);
 
             expect(config.formattedPollInterval()).toBe('5min');
@@ -1357,7 +1357,7 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--di-apikey', 'validkey123',
                 '--transport', 'STDIO',
-                '--decisions-poll-interval', '125'
+                '--decision-service-poll-interval', '125'
             ]);
 
             expect(config.formattedPollInterval()).toBe('2min 5s');

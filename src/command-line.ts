@@ -74,7 +74,7 @@ export class Configuration {
      * so that the rest of the codebase (and tests) can work with millisecond precision.
      */
     static validatePollInterval(pollInterval: string | undefined): number {
-        debug("DECISIONS_POLL_INTERVAL=" + pollInterval);
+        debug("DECISION_SERVICE_POLL_INTERVAL=" + pollInterval);
         if (pollInterval === undefined) {
             const defaultPollInterval = Configuration.defaultPollInterval();
             debug(`The poll interval is not defined. Using '${defaultPollInterval}' seconds.`);
@@ -156,7 +156,7 @@ export const ENV_VARIABLES = {
     BASIC_PASSWORD: 'BASIC_PASSWORD',
     DEPLOYMENT_SPACES: 'DEPLOYMENT_SPACES',
     DECISION_SERVICE_IDS: 'DECISION_SERVICE_IDS',
-    DECISIONS_POLL_INTERVAL: 'DECISIONS_POLL_INTERVAL'
+    DECISION_SERVICE_POLL_INTERVAL: 'DECISION_SERVICE_POLL_INTERVAL'
 } as const;
 
 /**
@@ -296,7 +296,7 @@ function createCommanderProgram(version: string): Command {
         .option('--transport <transport>', "Transport mode: 'stdio' or 'http'")
         .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
         .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
-        .option('--decisions-poll-interval <milliseconds>', 'Interval in s for polling tool changes (default: 30000, minimum: 1000)');
+        .option('--decision-service-poll-interval <milliseconds>', 'Interval in seconds for polling tool changes (default: 30s, minimum: 1s)');
 }
 
 export function createConfiguration(version: string, cliArguments?: readonly string[]): Configuration {
@@ -313,7 +313,7 @@ export function createConfiguration(version: string, cliArguments?: readonly str
     const url = validateUrl(resolveOption(options.url, ENV_VARIABLES.URL));
     const deploymentSpaces = validateDeploymentSpaces(resolveOption(options.deploymentSpaces, ENV_VARIABLES.DEPLOYMENT_SPACES));
     const decisionServiceIds = parseDecisionServiceIds(resolveOption(options.decisionServiceIds, ENV_VARIABLES.DECISION_SERVICE_IDS));
-    const pollIntervalMs = Configuration.validatePollInterval(resolveOption(options.decisionsPollInterval, ENV_VARIABLES.DECISIONS_POLL_INTERVAL));
+    const pollIntervalMs = Configuration.validatePollInterval(resolveOption(options.decisionServicePollInterval, ENV_VARIABLES.DECISION_SERVICE_POLL_INTERVAL));
  
     // Create and return the configuration object
     return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds, pollIntervalMs);

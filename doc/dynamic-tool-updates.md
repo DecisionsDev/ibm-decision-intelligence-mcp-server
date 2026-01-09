@@ -25,16 +25,16 @@ The MCP server implements the `listChanged` capability, which allows it to autom
 
 The dynamic tool update feature is enabled by default and requires no additional configuration. The decisions polling interval defaults to 30 seconds, which provides a good balance between responsiveness and system load.
 
-You can customize the polling interval using the `--decisions-poll-interval` option or the `DECISIONS_POLL_INTERVAL` environment variable:
+You can customize the polling interval using the `--decision-service-poll-interval` option or the `DECISION_SERVICE_POLL_INTERVAL` environment variable:
 
 ```bash
 # Set polling interval to 60 seconds
-npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL> --decisions-poll-interval 60
+npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL> --decision-service-poll-interval 60
 ```
 
 Or using an environment variable:
 ```bash
-export DECISIONS_POLL_INTERVAL=60
+export DECISION_SERVICE_POLL_INTERVAL=60
 npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL>
 ```
 **Note**: The minimum allowed polling interval is 1 second.

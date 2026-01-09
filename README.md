@@ -58,7 +58,7 @@ npx -y di-mcp-server --authentication-mode basic --basic-username <YOUR_USERNAME
 
 Syntax of the command line:
 ```bash
-npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>] [--decisions-poll-interval <DECISIONS_POLL_INTERVAL>]
+npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>] [--decision-service-poll-interval <DECISION_SERVICE_POLL_INTERVAL>]
 ```
 
 where
@@ -71,7 +71,7 @@ where
 - `TRANSPORT` (optional) is the transport protocol, either `stdio` (default) or `http`.
 - `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `development`).
 - `DECISION_SERVICE_IDS` (optional) If defined, comma-separated list of decision service ids to be exposed as tools
-- `DECISIONS_POLL_INTERVAL` (optional) is the interval in seconds for polling decisions (default: `30`, minimum: `1`)
+- `DECISION_SERVICE_POLL_INTERVAL` (optional) is the interval in seconds for polling decision services (default: `30`, minimum: `1`)
 
 The following environment variables can be used in addition to the command line options.
 
@@ -86,7 +86,7 @@ The following environment variables can be used in addition to the command line 
 | --decision-service-ids | DECISION_SERVICE_IDS | (Optional) Comma-separated list of decision services (default: fetch all decision services)                    |
 | --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `development`)                          |
 | --debug                | DEBUG                | When the value is `true`, the debug messages are written to the `stderr` of the MCP server                   |
-| --decisions-poll-interval | DECISIONS_POLL_INTERVAL | (Optional) interval in seconds for polling decisions (default: `30`, minimum: `1`)               |
+| --decision-service-poll-interval | DECISION_SERVICE_POLL_INTERVAL | (Optional) Interval in seconds for polling decision services (default: `30`, minimum: `1`)               |
 | --transport            | TRANSPORT            | (Optional) Transport protocol: `stdio` (default) or `http`                                                     |
 | --url                  | URL                  | Base URL of the decision runtime </br>                                                                       |
 
