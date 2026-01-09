@@ -109,7 +109,15 @@ export function getDecisionServiceOpenAPI(configuration: Configuration, deployme
         + "/openapi";
 
     return axios.get(url, { headers: getHeaders(configuration) })
-        .then(function (response) {          
+        .then(function (response) {
+            // Check if the response contains an incident (error) instead of OpenAPI spec
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((response.data as any).incident) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const incident = (response.data as any).incident;
+                const errorMessage = `Failed to get OpenAPI for decision service '${decisionServiceId}' in deployment space '${deploymentSpace}': ${incident.incidentCategory || 'Unknown error'}${incident.stackTrace ? ' - ' + incident.stackTrace : ''}`;
+                throw new Error(errorMessage);
+            }
             return (response.data as OpenAPIV3_1.Document);
     });
 }

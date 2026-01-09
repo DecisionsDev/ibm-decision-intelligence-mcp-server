@@ -155,8 +155,13 @@ export async function createMcpServer(name: string, configuration: Configuration
 
         for (const serviceId of serviceIds) {
             debug("serviceId", serviceId);
-            const openapi = await getDecisionServiceOpenAPI(configuration, deploymentSpace, serviceId);
-            await registerTool(server, configuration, deploymentSpace, openapi, serviceId, toolNames);
+            try {
+                const openapi = await getDecisionServiceOpenAPI(configuration, deploymentSpace, serviceId);
+                await registerTool(server, configuration, deploymentSpace, openapi, serviceId, toolNames);
+            } catch (error) {
+                // Log the error but continue processing other decision services
+                console.error(`Error registering tools for decision service '${serviceId}' in deployment space '${deploymentSpace}':`, error instanceof Error ? error.message : String(error));
+            }
         }
     }
 
