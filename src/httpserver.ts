@@ -97,5 +97,5 @@ export function runHTTPServer(server: McpServer): http.Server {
     // Handle DELETE requests for session termination
     app.delete('/mcp', handleSessionRequest);
 
-    return app.listen(3000);
+    return app.listen(0);
 }

@@ -58,7 +58,7 @@ npx -y di-mcp-server --authentication-mode basic --basic-username <YOUR_USERNAME
 
 Syntax of the command line:
 ```bash
-npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>]
+npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>] [--decision-service-poll-interval <DECISION_SERVICE_POLL_INTERVAL>]
 ```
 
 where
@@ -70,7 +70,8 @@ where
 - `RUNTIME_BASE_URL` is the base URL of the decision runtime REST API. For Decision Intelligence, its pattern is: `https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1` where TENANT_NAME is the name of the tenant.
 - `TRANSPORT` (optional) is the transport protocol, either `stdio` (default) or `http`.
 - `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `development`).
-- `DECISION_SERVICE_IDS` (optional) If defined, a comma-separated list of decision service IDs are exposed as tools
+- `DECISION_SERVICE_IDS` (optional) If defined, comma-separated list of decision service ids to be exposed as tools
+- `DECISION_SERVICE_POLL_INTERVAL` (optional) is the interval in seconds for polling decision services (default: `30`, minimum: `1`)
 
 The following environment variables can be used in addition to the command line options.
 
@@ -85,6 +86,7 @@ The following environment variables can be used in addition to the command line 
 | --decision-service-ids | DECISION_SERVICE_IDS | (Optional) Comma-separated list of decision services (default: fetch all decision services)                    |
 | --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `development`)                          |
 | --debug                | DEBUG                | When the value is `true`, the debug messages are written to the `stderr` of the MCP server                   |
+| --decision-service-poll-interval | DECISION_SERVICE_POLL_INTERVAL | (Optional) Interval in seconds for polling decision services (default: `30`, minimum: `1`)               |
 | --transport            | TRANSPORT            | (Optional) Transport protocol: `stdio` (default) or `http`                                                     |
 | --url                  | URL                  | Base URL of the decision runtime </br>                                                                       |
 
@@ -246,6 +248,10 @@ If the default naming strategy doesn't meet the requirements of your MCP hosts, 
 where
 - `OPERATION_ID` is the operation unique identifier
 - `YourCustomToolName` is the desired tool name for the operation
+## Dynamic Tool Updates
+
+For information about how the MCP server automatically detects and notifies clients of tool changes, see [Dynamic Tool Updates](./doc/dynamic-tool-updates.md).
+
 
 ## Technical details
 

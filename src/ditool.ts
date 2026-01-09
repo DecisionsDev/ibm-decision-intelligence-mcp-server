@@ -18,9 +18,13 @@ import { debug } from "./debug.js";
 import { getDecisionMetadata } from './diruntimeclient.js';
 import { Configuration } from "./command-line.js";
 
+function getDecisionServiceName(info: Record<string, string>) {
+    return info["x-ibm-ads-decision-service-name"];
+}
+
 export async function getToolName(configuration: Configuration, deploymentSpace: string, info: Record<string, string>, operationId: string, decisionServiceId: string, toolNames: string[]): Promise<string> {
-    const serviceName = info["x-ibm-ads-decision-service-name"];
-    debug("decisionServiceName", serviceName);
+    const decisionServiceName = getDecisionServiceName(info);
+    debug("decisionServiceName", decisionServiceName);
     const decisionId = info["x-ibm-ads-decision-id"];
     debug("decisionId", decisionId);
 
@@ -39,7 +43,7 @@ export async function getToolName(configuration: Configuration, deploymentSpace:
     debug("metadata", JSON.stringify(metadata, null, " "));
 
     const metadataName = `mcpToolName.${operationId}`;
-    return metadata.map[metadataName]?.value || generateToolName(operationId, serviceName, decisionServiceId, toolNames);
+    return metadata.map[metadataName]?.value || generateToolName(operationId, decisionServiceName, decisionServiceId, toolNames);
 }
 
 /**

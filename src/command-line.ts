@@ -25,6 +25,12 @@ export class Configuration {
     static readonly HTTP = "http";
 
     static readonly TRANSPORTS: string[] = [Configuration.STDIO, Configuration.HTTP];
+    // Public contract (CLI/env/docs) is in seconds
+    private static readonly MIN_POLL_INTERVAL_S = 1;
+    private static readonly DEFAULT_POLL_INTERVAL_S = 30;
+    private static readonly MS_IN_ONE_SECOND = 1000;
+    private static readonly MS_IN_ONE_MINUTE = 60_000;
+
 
     constructor(
         public credentials: Credentials,
@@ -33,7 +39,9 @@ export class Configuration {
         public version: string,
         public debugEnabled: boolean,
         public deploymentSpaces: string[] = Configuration.defaultDeploymentSpaces(),
-        public decisionServiceIds: string[] | undefined = undefined
+        public decisionServiceIds: string[] | undefined = undefined,
+        // Stored internally in milliseconds so tests and timers can use small values
+        public pollIntervalMs: number = Configuration.defaultPollIntervalMs()
     ) {
     }
 
@@ -43,6 +51,44 @@ export class Configuration {
 
     static defaultDeploymentSpaces(): string[] {
         return ['development'];
+    }
+
+    /**
+     * Default poll interval expressed in seconds (as exposed to users).
+     */
+    private static defaultPollInterval(): number {
+        return Configuration.DEFAULT_POLL_INTERVAL_S;
+    }
+
+    /**
+     * Default poll interval expressed in milliseconds (internal representation).
+     */
+    static defaultPollIntervalMs(): number {
+        return Configuration.defaultPollInterval() * Configuration.MS_IN_ONE_SECOND;
+    }
+
+    /**
+     * Validates the poll interval provided via CLI or environment.
+     *
+     * The user-facing contract is in **seconds**, but the returned value is in **milliseconds**
+     * so that the rest of the codebase (and tests) can work with millisecond precision.
+     */
+    static validatePollInterval(pollInterval: string | undefined): number {
+        debug("DECISION_SERVICE_POLL_INTERVAL=" + pollInterval);
+        if (pollInterval === undefined) {
+            const defaultPollInterval = Configuration.defaultPollInterval();
+            debug(`The poll interval is not defined. Using '${defaultPollInterval}' seconds.`);
+            return Configuration.defaultPollIntervalMs();
+        }
+        const parsedIntervalSeconds = parseInt(pollInterval, 10);
+        if (isNaN(parsedIntervalSeconds)) {
+            throw new Error(`Invalid poll interval: '${pollInterval}'. Must be a valid number in seconds.`);
+        }
+        if (parsedIntervalSeconds < Configuration.MIN_POLL_INTERVAL_S) {
+            throw new Error(`Invalid poll interval: '${pollInterval}'. Must be at least ${Configuration.MIN_POLL_INTERVAL_S} second.`);
+        }
+        // Return milliseconds for internal consumption
+        return parsedIntervalSeconds * Configuration.MS_IN_ONE_SECOND;
     }
 
     isStdioTransport(): boolean {
@@ -64,10 +110,70 @@ export class Configuration {
     isBasicAuthentication(): boolean {
         return this.credentials.authenticationMode === AuthenticationMode.BASIC;
     }
+
+    formattedPollInterval() {
+        // < 1 second → milliseconds
+        const ms = this.pollIntervalMs;
+        const oneSecondMs = Configuration.MS_IN_ONE_SECOND;
+        if (ms < oneSecondMs) {
+            return `${ms}ms`;
+        }
+
+        const oneMinuteMs = Configuration.MS_IN_ONE_MINUTE;
+        const minutes = Math.floor(ms / oneMinuteMs);
+        const remainingMs = ms % oneMinuteMs;
+        // minutes + seconds
+        if (minutes > 0) {
+            if (remainingMs === 0) {
+                return `${minutes}min`;
+            }
+
+            // exact seconds
+            if (remainingMs % 1_000 === 0) {
+                return `${minutes}min ${remainingMs / 1_000}s`;
+            }
+
+            return `${minutes}min ${(remainingMs / oneSecondMs).toFixed(3)}s`;
+        }
+        // seconds only
+        if (ms % 1_000 === 0) {
+            return `${ms / 1_000}s`;
+        }
+        return `${(ms / oneSecondMs).toFixed(3)}s`;
+    }
+}
+
+// Environment variable names
+export const ENV_VARIABLES = {
+    DEBUG: 'DEBUG',
+    URL: 'URL',
+    TRANSPORT: 'TRANSPORT',
+    AUTHENTICATION_MODE: 'AUTHENTICATION_MODE',
+    DI_APIKEY: 'DI_APIKEY',
+    ZEN_APIKEY: 'ZEN_APIKEY',
+    ZEN_USERNAME: 'ZEN_USERNAME',
+    BASIC_USERNAME: 'BASIC_USERNAME',
+    BASIC_PASSWORD: 'BASIC_PASSWORD',
+    DEPLOYMENT_SPACES: 'DEPLOYMENT_SPACES',
+    DECISION_SERVICE_IDS: 'DECISION_SERVICE_IDS',
+    DECISION_SERVICE_POLL_INTERVAL: 'DECISION_SERVICE_POLL_INTERVAL'
+} as const;
+
+/**
+ * Resolves an option value by checking the CLI option first, then falling back to environment variable
+ * @param optionValue - The value from CLI options
+ * @param envVarName - The environment variable name to check
+ * @returns The resolved value or undefined
+ */
+export function resolveOption(
+    optionValue: string | undefined,
+    envVarName: string
+): string | undefined {
+    return optionValue || process.env[envVarName];
 }
 
 // Configuration validation functions
-function validateUrl(url: string) : string {
+function validateUrl(url: string | undefined) : string {
     debug("URL=" + url);
     if (url === undefined) {
         throw new Error('The decision runtime REST API URL is not defined');
@@ -80,7 +186,7 @@ function validateUrl(url: string) : string {
     }
 }
 
-function validateTransport(transport: string) :StdioServerTransport | undefined {
+function validateTransport(transport: string | undefined) :StdioServerTransport | undefined {
     debug("TRANSPORT=" + transport);
     if (transport === undefined) {
         const defaultTransport = Configuration.defaultTransport();
@@ -168,9 +274,14 @@ function parseDecisionServiceIds(decisionServiceIds: string | undefined): string
     return undefined;
 }
 
-export function createConfiguration(version: string, cliArguments?: readonly string[]): Configuration {
+/**
+ * Creates and configures the Commander program with all CLI options
+ * @param version - The version string for the application
+ * @returns Configured Commander program
+ */
+function createCommanderProgram(version: string): Command {
     const program = new Command();
-    program
+    return program
         .name("di-mcp-server")
         .description("MCP Server for IBM Decision Intelligence")
         .version(version)
@@ -184,21 +295,26 @@ export function createConfiguration(version: string, cliArguments?: readonly str
         .option('--basic-password <string>', "Password for the basic authentication")
         .option('--transport <transport>', "Transport mode: 'stdio' or 'http'")
         .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
-        .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools');
+        .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
+        .option('--decision-service-poll-interval <milliseconds>', 'Interval in seconds for polling tool changes (default: 30s, minimum: 1s)');
+}
 
+export function createConfiguration(version: string, cliArguments?: readonly string[]): Configuration {
+    const program = createCommanderProgram(version);
     program.parse(cliArguments);
 
     const options = program.opts();
-    const debugFlag = Boolean(options.debug || process.env.DEBUG === "true");
+    const debugFlag = Boolean(options.debug || resolveOption(undefined, ENV_VARIABLES.DEBUG) === "true");
     setDebug(debugFlag);
 
-    // Validate all options;
+    // Validate all options
     const credentials = Credentials.validateCredentials(options);
-    const transport = validateTransport(options.transport || process.env.TRANSPORT);
-    const url = validateUrl(options.url || process.env.URL);
-    const deploymentSpaces = validateDeploymentSpaces(options.deploymentSpaces || process.env.DEPLOYMENT_SPACES);
-    const decisionServiceIds = parseDecisionServiceIds(options.decisionServiceIds || process.env.DECISION_SERVICE_IDS);
+    const transport = validateTransport(resolveOption(options.transport, ENV_VARIABLES.TRANSPORT));
+    const url = validateUrl(resolveOption(options.url, ENV_VARIABLES.URL));
+    const deploymentSpaces = validateDeploymentSpaces(resolveOption(options.deploymentSpaces, ENV_VARIABLES.DEPLOYMENT_SPACES));
+    const decisionServiceIds = parseDecisionServiceIds(resolveOption(options.decisionServiceIds, ENV_VARIABLES.DECISION_SERVICE_IDS));
+    const pollIntervalMs = Configuration.validatePollInterval(resolveOption(options.decisionServicePollInterval, ENV_VARIABLES.DECISION_SERVICE_POLL_INTERVAL));
  
-    // Create and return configuration object
-    return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds);
+    // Create and return the configuration object
+    return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds, pollIntervalMs);
 }
