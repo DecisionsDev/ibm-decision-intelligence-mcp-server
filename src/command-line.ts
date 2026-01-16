@@ -296,7 +296,7 @@ function createCommanderProgram(version: string): Command {
         .option('--transport <transport>', "Transport mode: 'stdio' or 'http'")
         .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
         .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
-        .option('--decision-service-poll-interval <milliseconds>', 'Interval in seconds for polling tool changes (default: 30s, minimum: 1s)');
+        .option('--decision-service-poll-interval <seconds>', 'Interval in seconds for polling tool changes (default: 30s, minimum: 1s)');
 }
 
 export function createConfiguration(version: string, cliArguments?: readonly string[]): Configuration {
