@@ -19,6 +19,21 @@ import { OpenAPIV3_1 } from "openapi-types";
 import {Configuration} from "./command-line.js";
 import { debug } from './debug.js';
 
+/**
+ * Checks whether there is at least one mcpgroup in common between two lists of mcpgroups.
+ *
+ * @param mcpGroups1 - First list of mcpgroup strings (can be undefined or empty)
+ * @param mcpGroups2 - Second list of mcpgroup strings (can be undefined or empty)
+ * @returns true if there is at least one common mcpgroup, false otherwise
+ */
+export function hasCommonMcpGroup(mcpGroups1: string[] | undefined, mcpGroups2: string[] | undefined
+): boolean {
+    if (!mcpGroups1 || !mcpGroups2) {
+        return false;
+    }
+    return mcpGroups1.some(group => mcpGroups2.includes(group));
+}
+
 export function executeDecision(configuration: Configuration, deploymentSpace: string, decisionId: string, operation: string, input: object|undefined) {
     const url = configuration.url + "/deploymentSpaces/" + deploymentSpace + "/decisions/"
         + encodeURIComponent(decisionId)
@@ -69,8 +84,8 @@ export function getMetadata(configuration: Configuration, deploymentSpace:string
     );
 }
 
-type MetadataType = {decisionServiceId: {value: string}, deploymentTime: {value: string}};
-export function getDecisionServiceIds(metadata: MetadataType[]): string[] {
+type MetadataType = {decisionServiceId: {value: string}, deploymentTime: {value: string}, mcpGroups?: {value: string}};
+export function getDecisionServiceIds(metadata: MetadataType[], configuration: Configuration): string[] {
     const ids: string[] = [];
 
     var lastDecisionServicesMetadata : Record<string, MetadataType> = {};
@@ -91,9 +106,24 @@ export function getDecisionServiceIds(metadata: MetadataType[]): string[] {
 
     metadata.forEach((m: MetadataType) => {
         const id = m.decisionServiceId.value;
-        if (!ids.includes(id))
-            ids.push(id);
+        
+        if (configuration.mcpGroups) {
+            if (m.mcpGroups && m.mcpGroups.value) {
+                const mcpGroups = m.mcpGroups.value.split(',').map(g => g.trim());
+
+                if (hasCommonMcpGroup(configuration.mcpGroups, mcpGroups)) {
+                    console.error("ADD");
+                    if (!ids.includes(id))
+                        ids.push(id);   
+                }
+            }
+        } else {
+            if (!ids.includes(id))
+                ids.push(id);
+        }
     });
+
+    console.error("ids", ids);
 
     return ids;
 }

@@ -64,11 +64,11 @@ const apikey = 'apiKey';
 const version = '1.2.3';
 const username = 'username';
 const encodedUsernameApiKey= Buffer.from(`${username}:${apikey}`).toString('base64');
-const diApiKeyConfiguration = new Configuration(Credentials.createDiApiKeyCredentials(apikey), undefined, url, version, false);
-const zenApiKeyConfiguration = new Configuration(Credentials.createZenApiKeyCredentials(username, apikey), undefined, url, version, false);
+const diApiKeyConfiguration = new Configuration(Credentials.createDiApiKeyCredentials(apikey), undefined, url, version, false, undefined);
+const zenApiKeyConfiguration = new Configuration(Credentials.createZenApiKeyCredentials(username, apikey), undefined, url, version, false, undefined);
 const password = 'password';
 const encodedUsernamePassword= Buffer.from(`${username}:${password}`).toString('base64');
-const basicAuthConfiguration = new Configuration(Credentials.createBasicAuthCredentials(username, password), undefined, url, version, false);
+const basicAuthConfiguration = new Configuration(Credentials.createBasicAuthCredentials(username, password), undefined, url, version, false, undefined);
 const decisionId = 'decisionId';
 const operationId = 'operationId';
 const executionResponse = { answer: 42 };
@@ -114,7 +114,7 @@ nock(url)
     .reply(200, decisionMetadata);
 
 test('getDecisionServiceIds', () => {
-    expect(getDecisionServiceIds(metadata)).toEqual(["ID1", "ID2"]);
+    expect(getDecisionServiceIds(metadata, diApiKeyConfiguration)).toEqual(["ID1", "ID2"]);
 });
 
 test(`getMetadata with 'test' deployment space`, async () => {
@@ -170,4 +170,66 @@ test(`getDecisionOpenApi with 'tutu' deploymentSpace`, async () => {
         .then(data => {
             expect(data).toEqual(loanValidationOpenapi);
         });
+});
+
+describe('hasCommonMcpGroup', () => {
+    test('returns true when there is a common group', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(['group1', 'group2'], ['group2', 'group3'])).toBe(true);
+    });
+
+    test('returns true when multiple common groups exist', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(['group1', 'group2', 'group3'], ['group2', 'group3', 'group4'])).toBe(true);
+    });
+
+    test('returns false when there are no common groups', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(['group1', 'group2'], ['group3', 'group4'])).toBe(false);
+    });
+
+    test('returns false when first list is undefined', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(undefined, ['group1', 'group2'])).toBe(false);
+    });
+
+    test('returns false when second list is undefined', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(['group1', 'group2'], undefined)).toBe(false);
+    });
+
+    test('returns false when both lists are undefined', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(undefined, undefined)).toBe(false);
+    });
+
+    test('returns false when first list is empty', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup([], ['group1', 'group2'])).toBe(false);
+    });
+
+    test('returns false when second list is empty', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(['group1', 'group2'], [])).toBe(false);
+    });
+
+    test('returns false when both lists are empty', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup([], [])).toBe(false);
+    });
+
+    test('returns true when lists have identical groups', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(['group1', 'group2'], ['group1', 'group2'])).toBe(true);
+    });
+
+    test('returns true when single group matches', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(['group1'], ['group1'])).toBe(true);
+    });
+
+    test('returns false when single groups do not match', () => {
+        const { hasCommonMcpGroup } = require('../src/diruntimeclient.js');
+        expect(hasCommonMcpGroup(['group1'], ['group2'])).toBe(false);
+    });
 });
