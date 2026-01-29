@@ -17,6 +17,7 @@
 import axios from 'axios';
 import { OpenAPIV3_1 } from "openapi-types";
 import {Configuration} from "./command-line.js";
+import { debug } from './debug.js';
 
 export function executeDecision(configuration: Configuration, deploymentSpace: string, decisionId: string, operation: string, input: object|undefined) {
     const url = configuration.url + "/deploymentSpaces/" + deploymentSpace + "/decisions/"
@@ -59,7 +60,7 @@ export async function getDecisionMetadata(configuration: Configuration, deployme
 export function getMetadata(configuration: Configuration, deploymentSpace:string) {
     const url = configuration.url + "/deploymentSpaces"
         + "/" + deploymentSpace
-        + "/metadata?names=decisionServiceId";
+        + "/metadata?names=decisionServiceId,deploymentTime,mcpGroups";
 
     return axios.get(url, { headers: getHeaders(configuration) })
         .then(function (response) {          
@@ -68,9 +69,25 @@ export function getMetadata(configuration: Configuration, deploymentSpace:string
     );
 }
 
-type MetadataType = {decisionServiceId: {value: string}};
+type MetadataType = {decisionServiceId: {value: string}, deploymentTime: {value: string}};
 export function getDecisionServiceIds(metadata: MetadataType[]): string[] {
     const ids: string[] = [];
+
+    var lastDecisionServicesMetadata : Record<string, MetadataType> = {};
+    metadata.forEach((m: MetadataType) => {
+        var lastDecision = lastDecisionServicesMetadata[m.decisionServiceId.value];
+        
+        if (lastDecision == null) {
+            lastDecisionServicesMetadata[m.decisionServiceId.value] = m;
+        } else {
+            var deploymentTime = Date.parse(m.deploymentTime.value);
+            if (parseInt(lastDecision.deploymentTime.value) < deploymentTime) {
+                lastDecisionServicesMetadata[m.decisionServiceId.value] = m;
+            }
+        }
+    });
+       
+    metadata = Object.values(lastDecisionServicesMetadata);
 
     metadata.forEach((m: MetadataType) => {
         const id = m.decisionServiceId.value;

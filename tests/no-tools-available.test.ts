@@ -125,7 +125,7 @@ describe('STDIO MCP server with no tools intially available', () => {
         const userAgentValue = `IBM-DI-MCP-Server/${configuration.version}`;
 
         nock(configuration.url)
-            .get(`/deploymentSpaces/${encodedDeploymentSpace}/metadata?names=decisionServiceId`)
+            .get(`/deploymentSpaces/${encodedDeploymentSpace}/metadata?names=decisionServiceId,deploymentTime,mcpGroups`)
             .matchHeader(userAgentHeader, userAgentValue)
             .matchHeader(headerKey, headerValue)
             .reply(200, []); // Empty array - no decision services available

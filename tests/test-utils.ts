@@ -388,7 +388,7 @@ export function setupNockMocks(config: SetupNockMocksConfig): void {
         const userAgentValue = `IBM-DI-MCP-Server/${configuration.version}`;
 
         const metadataScope = nock(configuration.url)
-            .get(`/deploymentSpaces/${deploymentSpaceId}/metadata?names=decisionServiceId`)
+            .get(`/deploymentSpaces/${deploymentSpaceId}/metadata?names=decisionServiceId,deploymentTime,mcpGroups`)
             .matchHeader(userAgentHeader, userAgentValue)
             .matchHeader(headerKey, headerValue)
             .reply(200,  decisionIds.map(decisionId => ({
@@ -397,7 +397,12 @@ export function setupNockMocks(config: SetupNockMocksConfig): void {
                     'kind': 'PLAIN',
                     'readOnly': true,
                     'value': generateDecisionServiceId(deploymentSpaceId, decisionId)
-                }
+                }, "deploymentTime": {
+                "name": 'deploymentTime',
+                "kind": 'PLAIN',
+                "readOnly": true,
+                "value": '2025-08-07T21:00:12.045Z'
+            }
             })));
         // Make interceptors persistent so they can be called multiple times during polling
         if (persistMocksForPolling) {

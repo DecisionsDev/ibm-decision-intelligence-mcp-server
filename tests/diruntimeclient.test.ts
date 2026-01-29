@@ -26,6 +26,12 @@ const metadata =  [{
             "kind": "PLAIN",
             "readOnly": true,
             "value": "ID1"
+        },
+        "deploymentTime": {
+            "name": 'deploymentTime',
+            "kind": 'PLAIN',
+            "readOnly": true,
+            "value": '2025-08-07T21:00:12.045Z'
         }
     }, {
         "decisionServiceId": {
@@ -33,6 +39,11 @@ const metadata =  [{
             "kind": "PLAIN",
             "readOnly": true,
             "value": "ID1"
+        }, "deploymentTime": {
+            "name": 'deploymentTime',
+            "kind": 'PLAIN',
+            "readOnly": true,
+            "value": '2025-08-07T21:00:12.045Z'
         }
     }, {
         "decisionServiceId": {
@@ -40,7 +51,12 @@ const metadata =  [{
             "kind": "PLAIN",
             "readOnly": true,
             "value": "ID2"
-    }
+    }, "deploymentTime": {
+            "name": 'deploymentTime',
+            "kind": 'PLAIN',
+            "readOnly": true,
+            "value": '2025-08-07T21:00:12.045Z'
+        }
 }];
 
 const url = 'https://example.com';
@@ -63,16 +79,21 @@ const decisionMetadata = {
             "kind": "PLAIN",
             "readOnly": true,
             "value": "ID1"
+        }, "deploymentTime": {
+            "name": 'deploymentTime',
+            "kind": 'PLAIN',
+            "readOnly": true,
+            "value": '2025-08-07T21:00:12.045Z'
         }
     }
 };
 
 const deploymentSpaceWithWhiteSpaces = `toto    toto`;
 nock(url)
-    .get('/deploymentSpaces/test/metadata?names=decisionServiceId')
+    .get('/deploymentSpaces/test/metadata?names=decisionServiceId,deploymentTime,mcpGroups')
     .matchHeader('authorization', `Basic ${encodedUsernamePassword}`)
     .reply(200, metadata)
-    .get('/deploymentSpaces/nonexistent/metadata?names=decisionServiceId')
+    .get('/deploymentSpaces/nonexistent/metadata?names=decisionServiceId,deploymentTime,mcpGroups')
     .reply(404)
     .get('/selectors/lastDeployedDecisionService/deploymentSpaces/production/openapi?decisionServiceId=ID1&outputFormat=JSON/openapi')
     .matchHeader('apikey', apikey)
