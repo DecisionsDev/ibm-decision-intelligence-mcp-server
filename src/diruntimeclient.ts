@@ -112,7 +112,6 @@ export function getDecisionServiceIds(metadata: MetadataType[], configuration: C
                 const mcpGroups = m.mcpGroups.value.split(',').map(g => g.trim());
 
                 if (hasCommonMcpGroup(configuration.mcpGroups, mcpGroups)) {
-                    console.error("ADD");
                     if (!ids.includes(id))
                         ids.push(id);   
                 }
@@ -122,8 +121,6 @@ export function getDecisionServiceIds(metadata: MetadataType[], configuration: C
                 ids.push(id);
         }
     });
-
-    console.error("ids", ids);
 
     return ids;
 }
