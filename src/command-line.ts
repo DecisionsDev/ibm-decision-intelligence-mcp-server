@@ -297,7 +297,7 @@ function createCommanderProgram(version: string): Command {
         .option('--transport <transport>', "Transport mode: 'stdio' or 'http'")
         .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
         .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
-        .option('--mcp-groups <list>', 'If defined, only decision services in the specificied mcp groups will be exposed as tools ')
+        .option('--mcp-groups <list>', 'If defined, only decision services in the specificied mcp groups will be exposed as tools')
         .option('--decision-service-poll-interval <seconds>', 'Interval in seconds for polling tool changes (default: 30s, minimum: 1s)');
 }
 
