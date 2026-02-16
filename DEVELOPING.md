@@ -42,12 +42,12 @@ This will:
 3. Create detailed reports in the `coverage` directory
 
 The coverage report includes:
-- Statement coverage: percentage of code statements executed
-- Branch coverage: percentage of control structures (if/else, switch) executed
-- Function coverage: percentage of functions called
-- Line coverage: percentage of executable lines executed
+- Statement coverage: percentage of code statements executed (**96%**)
+- Branch coverage: percentage of control structures (if/else, switch) executed (**90%**)
+- Function coverage: percentage of functions called (**100%**)
+- Line coverage: percentage of executable lines executed (**96%**)
 
-Coverage thresholds are set to 70% for statements, branches, functions, and lines. If the coverage falls below these thresholds, the test command fails.
+Coverage thresholds are  set to 96%, 90%, 100% and 96% respectively for statements, branches, functions, and lines. If the coverage falls below these thresholds, the `npm run test:coverage` command fails.
 
 To view the detailed HTML coverage report, open `coverage/lcov-report/index.html` in your browser after running the coverage command.
 ### Running the MCP server in development mode with `nodemon`
