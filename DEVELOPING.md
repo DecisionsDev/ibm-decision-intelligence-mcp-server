@@ -67,13 +67,24 @@ APIKEY=<APIKEY> URL=<URL> npm run dev
 #### Releasing a new version
 
 - Checkout the main branch
-- Build and test the project
-- Test your local version in target IDEs and IBM watsonx Orchestrate
+- Build and test the project:
+  - npm ci
+  - npm run build
+  - npm run test
 - Create a new branch for the release
 - Bump the version in `package.json`
 - Commit the changes, push to the release branch and create a pull request
 - Merge the release branch into main
 - Create a new release in GitHub
+- Run npm pack
+- Test the produced `di-mcp-server-X.Y.Z.tgz` npm package locally in target IDEs:
+  - IBM Bob
+  - Cursor
 - Publish the new version to NPM
+   - npm login
+   - npm publish 
 - Test the new version in target IDEs and IBM watsonx Orchestrate
+  - IBM Bob
+  - Cursor
+  - IBM watsonx Orchestrate
 
