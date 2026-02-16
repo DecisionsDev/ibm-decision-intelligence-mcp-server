@@ -79,12 +79,10 @@ APIKEY=<APIKEY> URL=<URL> npm run dev
 - Run npm pack
 - Test the produced `di-mcp-server-X.Y.Z.tgz` npm package locally in target IDEs:
   - IBM Bob
-  - Cursor
 - Publish the new version to NPM
    - npm login
    - npm publish 
 - Test the new version in target IDEs and IBM watsonx Orchestrate
   - IBM Bob
-  - Cursor
   - IBM watsonx Orchestrate
 
