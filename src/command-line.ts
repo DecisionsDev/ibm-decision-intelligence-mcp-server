@@ -41,7 +41,8 @@ export class Configuration {
         public deploymentSpaces: string[] = Configuration.defaultDeploymentSpaces(),
         public decisionServiceIds: string[] | undefined = undefined,
         // Stored internally in milliseconds so tests and timers can use small values
-        public pollIntervalMs: number = Configuration.defaultPollIntervalMs()
+        public pollIntervalMs: number = Configuration.defaultPollIntervalMs(),
+        public mcpGroups: string[] | undefined = undefined
     ) {
     }
 
@@ -296,6 +297,7 @@ function createCommanderProgram(version: string): Command {
         .option('--transport <transport>', "Transport mode: 'stdio' or 'http'")
         .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
         .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
+        .option('--mcp-groups <list>', 'If defined, only decision services in the specificied mcp groups will be exposed as tools')
         .option('--decision-service-poll-interval <seconds>', 'Interval in seconds for polling tool changes (default: 30s, minimum: 1s)');
 }
 
@@ -315,6 +317,8 @@ export function createConfiguration(version: string, cliArguments?: readonly str
     const decisionServiceIds = parseDecisionServiceIds(resolveOption(options.decisionServiceIds, ENV_VARIABLES.DECISION_SERVICE_IDS));
     const pollIntervalMs = Configuration.validatePollInterval(resolveOption(options.decisionServicePollInterval, ENV_VARIABLES.DECISION_SERVICE_POLL_INTERVAL));
  
+    const mcpGroups = options.mcpGroups ? splitCommaIgnoringEscaped(options.mcpGroups) : undefined;
+
     // Create and return the configuration object
-    return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds, pollIntervalMs);
+    return new Configuration(credentials, transport, url, version, debugFlag, deploymentSpaces, decisionServiceIds, pollIntervalMs, mcpGroups);
 }

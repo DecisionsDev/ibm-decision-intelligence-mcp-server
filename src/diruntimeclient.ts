@@ -17,6 +17,22 @@
 import axios from 'axios';
 import { OpenAPIV3_1 } from "openapi-types";
 import {Configuration} from "./command-line.js";
+import { debug } from './debug.js';
+
+/**
+ * Checks whether there is at least one mcpgroup in common between two lists of mcpgroups.
+ *
+ * @param mcpGroups1 - First list of mcpgroup strings (can be undefined or empty)
+ * @param mcpGroups2 - Second list of mcpgroup strings (can be undefined or empty)
+ * @returns true if there is at least one common mcpgroup, false otherwise
+ */
+export function hasCommonMcpGroup(mcpGroups1: string[] | undefined, mcpGroups2: string[] | undefined
+): boolean {
+    if (!mcpGroups1 || !mcpGroups2) {
+        return false;
+    }
+    return mcpGroups1.some(group => mcpGroups2.includes(group));
+}
 
 export function executeDecision(configuration: Configuration, deploymentSpace: string, decisionId: string, operation: string, input: object|undefined) {
     const url = configuration.url + "/deploymentSpaces/" + deploymentSpace + "/decisions/"
@@ -59,7 +75,7 @@ export async function getDecisionMetadata(configuration: Configuration, deployme
 export function getMetadata(configuration: Configuration, deploymentSpace:string) {
     const url = configuration.url + "/deploymentSpaces"
         + "/" + deploymentSpace
-        + "/metadata?names=decisionServiceId";
+        + "/metadata?names=decisionServiceId,deploymentTime,mcpGroups";
 
     return axios.get(url, { headers: getHeaders(configuration) })
         .then(function (response) {          
@@ -68,14 +84,42 @@ export function getMetadata(configuration: Configuration, deploymentSpace:string
     );
 }
 
-type MetadataType = {decisionServiceId: {value: string}};
-export function getDecisionServiceIds(metadata: MetadataType[]): string[] {
+type MetadataType = {decisionServiceId: {value: string}, deploymentTime: {value: string}, mcpGroups?: {value: string}};
+export function getDecisionServiceIds(metadata: MetadataType[], configuration: Configuration): string[] {
     const ids: string[] = [];
+
+    var lastDecisionServicesMetadata : Record<string, MetadataType> = {};
+    metadata.forEach((m: MetadataType) => {
+        var lastDecision = lastDecisionServicesMetadata[m.decisionServiceId.value];
+        
+        if (lastDecision == null) {
+            lastDecisionServicesMetadata[m.decisionServiceId.value] = m;
+        } else {
+            var deploymentTime = Date.parse(m.deploymentTime.value);
+            if (parseInt(lastDecision.deploymentTime.value) < deploymentTime) {
+                lastDecisionServicesMetadata[m.decisionServiceId.value] = m;
+            }
+        }
+    });
+       
+    metadata = Object.values(lastDecisionServicesMetadata);
 
     metadata.forEach((m: MetadataType) => {
         const id = m.decisionServiceId.value;
-        if (!ids.includes(id))
-            ids.push(id);
+        
+        if (configuration.mcpGroups) {
+            if (m.mcpGroups && m.mcpGroups.value) {
+                const mcpGroups = m.mcpGroups.value.split(',').map(g => g.trim());
+
+                if (hasCommonMcpGroup(configuration.mcpGroups, mcpGroups)) {
+                    if (!ids.includes(id))
+                        ids.push(id);   
+                }
+            }
+        } else {
+            if (!ids.includes(id))
+                ids.push(id);
+        }
     });
 
     return ids;
