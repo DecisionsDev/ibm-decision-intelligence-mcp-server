@@ -26,12 +26,12 @@ import {runHTTPServer} from "./httpserver.js";
 import {debug} from "./debug.js";
 import {expandJSONSchemaDefinition} from './jsonschema.js';
 import {getToolName} from "./ditool.js";
-import {convertJsonSchemaToZod} from "zod-from-json-schema";
+import {jsonSchemaToZod} from "json-schema-to-zod";
+import {evalTS} from "./ts.js";
 import { OpenAPIV3_1 } from "openapi-types";
 import { ZodRawShape, ZodType } from "zod";
 import { Configuration } from "./command-line.js";
 import http from "node:http";
-import { JSONSchema } from "zod/v4/core";
 
 // Interface to track tool definitions for change detection
 interface ToolDefinition {
@@ -57,7 +57,8 @@ function getParameters(jsonSchema: OpenAPIV3_1.SchemaObject): ZodRawShape {
 
     for (const propName in jsonSchema.properties) {
         const jsonSchemaProp = jsonSchema.properties[propName];
-        params[propName] = convertJsonSchemaToZod(jsonSchemaProp as JSONSchema.JSONSchema);
+        const code = jsonSchemaToZod(jsonSchemaProp);
+        params[propName] = evalTS(code);
     }
 
     return params;
