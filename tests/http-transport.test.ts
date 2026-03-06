@@ -25,7 +25,7 @@ import {setupNockMocks, validateClient} from "./test-utils.js";
 
 describe('HTTP Transport', () => {
     const decisionIds = ['dummy.decision.id'];
-    const configuration = new Configuration(Credentials.createDiApiKeyCredentials('validApiKey123'),  undefined, 'https://foo.bar.bra,fr', '1.2.3', true);
+    const configuration = new Configuration(Credentials.createDiApiKeyCredentials('validApiKey123'),  undefined, 'https://foo.bar.bra,fr', '1.2.3', true, undefined);
 
     beforeAll(() => {
         setupNockMocks({
