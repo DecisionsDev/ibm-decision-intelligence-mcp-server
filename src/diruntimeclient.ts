@@ -17,7 +17,6 @@
 import axios from 'axios';
 import { OpenAPIV3_1 } from "openapi-types";
 import {Configuration} from "./command-line.js";
-import { debug } from './debug.js';
 
 /**
  * Checks whether there is at least one mcpgroup in common between two lists of mcpgroups.
