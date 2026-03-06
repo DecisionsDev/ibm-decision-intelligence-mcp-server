@@ -1362,5 +1362,203 @@ describe('CLI Configuration', () => {
 
             expect(config.formattedPollInterval()).toBe('2min 5s');
         });
+
+    describe('mcpGroups option', () => {
+        test('should parse single mcp group from CLI', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', 'group1'
+            ]);
+
+            expect(config.mcpGroups).toEqual(['group1']);
+        });
+
+        test('should parse multiple mcp groups from CLI', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', 'group1,group2,group3'
+            ]);
+
+            expect(config.mcpGroups).toEqual(['group1', 'group2', 'group3']);
+        });
+
+        test('should trim whitespace from mcp groups', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', 'group1 , group2 , group3'
+            ]);
+
+            expect(config.mcpGroups).toEqual(['group1', 'group2', 'group3']);
+        });
+
+        test('should handle escaped commas in mcp group names', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', 'group\\,with\\,commas,group2'
+            ]);
+
+            expect(config.mcpGroups).toEqual(['group,with,commas', 'group2']);
+        });
+
+        test('should handle mcp groups with special characters', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', 'group-1,group_2,group.3'
+            ]);
+
+            expect(config.mcpGroups).toEqual(['group-1', 'group_2', 'group.3']);
+        });
+
+        test('should filter out empty strings from mcp groups', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', 'group1,,group2,  ,group3'
+            ]);
+
+            expect(config.mcpGroups).toEqual(['group1', 'group2', 'group3']);
+        });
+
+        test('should return undefined when mcp-groups option is not provided', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO'
+            ]);
+
+            expect(config.mcpGroups).toBeUndefined();
+        });
+
+        test('should return undefined when mcp-groups is empty string', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', ''
+            ]);
+
+            expect(config.mcpGroups).toBeUndefined();
+        });
+
+        test('should return undefined when mcp-groups contains only whitespace', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', '   '
+            ]);
+
+            expect(config.mcpGroups).toBeUndefined();
+        });
+
+        test('should return undefined when mcp-groups contains only commas', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', ',,,'
+            ]);
+
+            expect(config.mcpGroups).toBeUndefined();
+        });
+
+        test('should handle single group with leading/trailing whitespace', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', '  group1  '
+            ]);
+
+            expect(config.mcpGroups).toEqual(['group1']);
+        });
+
+        test('should handle complex escaped comma scenarios', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', 'group\\,1,group2\\,with\\,many\\,commas,group3'
+            ]);
+
+            expect(config.mcpGroups).toEqual(['group,1', 'group2,with,many,commas', 'group3']);
+        });
+
+        test('should work with other options like deployment-spaces', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--deployment-spaces', 'dev,prod',
+                '--mcp-groups', 'frontend,backend'
+            ]);
+
+            expect(config.deploymentSpaces).toEqual(['dev', 'prod']);
+            expect(config.mcpGroups).toEqual(['frontend', 'backend']);
+        });
+
+        test('should work with decision-service-ids option', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--decision-service-ids', 'service1,service2',
+                '--mcp-groups', 'group1,group2'
+            ]);
+
+            expect(config.decisionServiceIds).toEqual(['service1', 'service2']);
+            expect(config.mcpGroups).toEqual(['group1', 'group2']);
+        });
+
+        test('should handle very long list of mcp groups', () => {
+            const groups = Array.from({ length: 50 }, (_, i) => `group${i + 1}`);
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', groups.join(',')
+            ]);
+
+            expect(config.mcpGroups).toEqual(groups);
+        });
+
+        test('should handle mcp groups with unicode characters', () => {
+            const config = createConfiguration(version, [
+                'node', 'cli.js',
+                '--url', url,
+                '--di-apikey', 'validkey123',
+                '--transport', 'STDIO',
+                '--mcp-groups', 'группа1,グループ2,组3'
+            ]);
+
+            expect(config.mcpGroups).toEqual(['группа1', 'グループ2', '组3']);
+        });
+    });
     });
 });
