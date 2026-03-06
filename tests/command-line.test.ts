@@ -1459,7 +1459,7 @@ describe('CLI Configuration', () => {
             expect(config.mcpGroups).toBeUndefined();
         });
 
-        test('should return undefined when mcp-groups contains only whitespace', () => {
+        test('should return [] when mcp-groups contains only whitespace', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
@@ -1468,10 +1468,10 @@ describe('CLI Configuration', () => {
                 '--mcp-groups', '   '
             ]);
 
-            expect(config.mcpGroups).toBeUndefined();
+            expect(config.mcpGroups).toEqual([])
         });
 
-        test('should return undefined when mcp-groups contains only commas', () => {
+        test('should return [] when mcp-groups contains only commas', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
@@ -1480,7 +1480,7 @@ describe('CLI Configuration', () => {
                 '--mcp-groups', ',,,'
             ]);
 
-            expect(config.mcpGroups).toBeUndefined();
+            expect(config.mcpGroups).toEqual([])
         });
 
         test('should handle single group with leading/trailing whitespace', () => {
