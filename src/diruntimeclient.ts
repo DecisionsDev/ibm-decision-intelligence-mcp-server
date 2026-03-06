@@ -87,14 +87,14 @@ type MetadataType = {decisionServiceId: {value: string}, deploymentTime: {value:
 export function getDecisionServiceIds(metadata: MetadataType[], configuration: Configuration): string[] {
     const ids: string[] = [];
 
-    var lastDecisionServicesMetadata : Record<string, MetadataType> = {};
+    const lastDecisionServicesMetadata : Record<string, MetadataType> = {};
     metadata.forEach((m: MetadataType) => {
-        var lastDecision = lastDecisionServicesMetadata[m.decisionServiceId.value];
+        const lastDecision = lastDecisionServicesMetadata[m.decisionServiceId.value];
         
         if (lastDecision == null) {
             lastDecisionServicesMetadata[m.decisionServiceId.value] = m;
         } else {
-            var deploymentTime = Date.parse(m.deploymentTime.value);
+            const deploymentTime = Date.parse(m.deploymentTime.value);
             if (parseInt(lastDecision.deploymentTime.value) < deploymentTime) {
                 lastDecisionServicesMetadata[m.decisionServiceId.value] = m;
             }
