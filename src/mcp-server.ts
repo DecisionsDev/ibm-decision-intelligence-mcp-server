@@ -182,7 +182,7 @@ async function fetchAllToolMetadata(configuration: Configuration): Promise<Omit<
 
         if (serviceIds === undefined || serviceIds.length === 0) {
             const spaceMetadata = await getMetadata(configuration, deploymentSpace);
-            serviceIds = getDecisionServiceIds(spaceMetadata);
+            serviceIds = getDecisionServiceIds(spaceMetadata, configuration);
         }
 
         for (const serviceId of serviceIds) {
@@ -347,7 +347,7 @@ export async function createMcpServer(name: string, configuration: Configuration
             const spaceMetadata = await getMetadata(configuration, deploymentSpace);
             debug("spaceMetadata", JSON.stringify(spaceMetadata, null, " "));
              
-            serviceIds = getDecisionServiceIds(spaceMetadata);
+            serviceIds = getDecisionServiceIds(spaceMetadata, configuration);
         }
         debug("serviceIds", JSON.stringify(serviceIds, null, " "));
 
