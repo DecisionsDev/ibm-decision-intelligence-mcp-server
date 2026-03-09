@@ -42,12 +42,12 @@ This will:
 3. Create detailed reports in the `coverage` directory
 
 The coverage report includes:
-- Statement coverage: percentage of code statements executed
-- Branch coverage: percentage of control structures (if/else, switch) executed
-- Function coverage: percentage of functions called
-- Line coverage: percentage of executable lines executed
+- Statement coverage: percentage of code statements executed (**96%**)
+- Branch coverage: percentage of control structures (if/else, switch) executed (**90%**)
+- Function coverage: percentage of functions called (**100%**)
+- Line coverage: percentage of executable lines executed (**96%**)
 
-Coverage thresholds are set to 70% for statements, branches, functions, and lines. If the coverage falls below these thresholds, the test command fails.
+Coverage thresholds are  set to 96%, 90%, 100% and 96% respectively for statements, branches, functions, and lines. If the coverage falls below these thresholds, the `npm run test:coverage` command fails.
 
 To view the detailed HTML coverage report, open `coverage/lcov-report/index.html` in your browser after running the coverage command.
 ### Running the MCP server in development mode with `nodemon`
@@ -64,3 +64,25 @@ npm run dev -- --apikey <APIKEY> --url <URL>
 ```bash
 APIKEY=<APIKEY> URL=<URL> npm run dev
 ```
+#### Releasing a new version
+
+- Checkout the main branch
+- Build and test the project:
+  - npm ci
+  - npm run build
+  - npm run test
+- Create a new branch for the release
+- Bump the version in `package.json`
+- Commit the changes, push to the release branch and create a pull request
+- Merge the release branch into main
+- Create a new release in GitHub
+- Run npm pack
+- Test the produced `di-mcp-server-X.Y.Z.tgz` npm package locally in target IDEs:
+  - IBM Bob
+- Publish the new version to NPM
+   - npm login
+   - npm publish 
+- Test the new version in target IDEs and IBM watsonx Orchestrate
+  - IBM Bob
+  - IBM watsonx Orchestrate
+
