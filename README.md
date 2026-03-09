@@ -84,6 +84,7 @@ The following environment variables can be used in addition to the command line 
 | --basic-username       | BASIC_USERNAME       | Basic authentication username                                                                                |
 | --basic-password       | BASIC_PASSWORD       | Basic authentication password                                                                                |
 | --decision-service-ids | DECISION_SERVICE_IDS | (Optional) Comma-separated list of decision services (default: fetch all decision services)                    |
+| --mcp-groups            | N/A           | (Optional) Only decision services with the metadata 'mcpGroups' set to one of the value of this comma-separated list will be exposed |
 | --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `development`)                          |
 | --debug                | DEBUG                | When the value is `true`, the debug messages are written to the `stderr` of the MCP server                   |
 | --decision-service-poll-interval | DECISION_SERVICE_POLL_INTERVAL | (Optional) Interval in seconds for polling decision services (default: `30`, minimum: `1`)               |
@@ -248,6 +249,68 @@ If the default naming strategy doesn't meet the requirements of your MCP hosts, 
 where
 - `OPERATION_ID` is the operation unique identifier
 - `YourCustomToolName` is the desired tool name for the operation
+
+### Filtering exposed decision services
+
+By default, the MCP server exposes **all** decision services from the specified deployment spaces as tools.
+You can filter which decision services are exposed using one of two methods:
+
+#### Method 1: Filter by decision service IDs
+
+Use the `--decision-service-ids` option to expose only specific decision services by their unique identifiers.
+
+The decision service ID is defined in the `decisionServiceId` metadata of the deployed decision service.
+
+**Example configuration:**
+
+```json
+{
+    "mcpServers": {
+        "di-mcp-server": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "di-mcp-server",
+                "--di-apikey",
+                "<APIKEY>",
+                "--url",
+                "https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1",
+                "--decision-service-ids",
+                "loan-approval,credit-scoring"
+            ]
+        }
+    }
+}
+```
+
+#### Method 2: Filter by MCP groups
+
+Use the `--mcp-groups` option to expose decision services that belong to specific logical groups. This is useful for organizing decision services by domain, team, or use case.
+
+The MCP groups are defined in the `mcpGroups` metadata of the deployed decision service as a comma-separated list.
+
+**Example configuration:**
+
+```json
+{
+    "mcpServers": {
+        "di-mcp-server": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "di-mcp-server",
+                "--di-apikey",
+                "<APIKEY>",
+                "--url",
+                "https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1",
+                "--mcp-groups",
+                "finance,risk-management"
+            ]
+        }
+    }
+}
+```
+
 ## Dynamic Tool Updates
 
 For information about how the MCP server automatically detects and notifies clients of tool changes, see [Dynamic Tool Updates](./doc/dynamic-tool-updates.md).
