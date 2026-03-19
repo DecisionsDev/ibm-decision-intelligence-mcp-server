@@ -290,3 +290,129 @@ test('expandJSONSchemaDefinition handles mixed valid and null properties', () =>
     expect(result.properties.nullField1).toBeNull();
     expect(result.properties.nullField2).toBeNull();
 });
+
+test('expandJSONSchemaDefinition expands $ref in array items', () => {
+    const defs = {
+        Status: {
+            title: "Status",
+            type: "string",
+            enum: ["Bronze", "Gold", "Platinum", "Silver"]
+        },
+        Item: {
+            title: "Item",
+            type: "object",
+            properties: {
+                name: {
+                    title: "name",
+                    type: "string"
+                },
+                price: {
+                    title: "price",
+                    type: "number",
+                    format: "double"
+                }
+            }
+        },
+        ShoppingCart: {
+            title: "Shopping cart",
+            type: "object",
+            properties: {
+                items: {
+                    title: "item",
+                    type: "array",
+                    items: {
+                        $ref: "#/components/schemas/Item"
+                    }
+                },
+                price: {
+                    title: "price",
+                    type: "number",
+                    format: "double"
+                }
+            }
+        },
+        Customer: {
+            title: "Customer",
+            type: "object",
+            properties: {
+                name: {
+                    title: "name",
+                    type: "string"
+                },
+                status: {
+                    $ref: "#/components/schemas/Status"
+                }
+            }
+        }
+    };
+
+    const schema = {
+        type: "object",
+        properties: {
+            customer: {
+                $ref: "#/components/schemas/Customer"
+            },
+            shoppingCart: {
+                $ref: "#/components/schemas/ShoppingCart"
+            }
+        }
+    };
+
+    const expected = {
+        type: "object",
+        properties: {
+            customer: {
+                title: "Customer",
+                type: "object",
+                properties: {
+                    name: {
+                        title: "name",
+                        type: "string"
+                    },
+                    status: {
+                        title: "Status",
+                        type: "string",
+                        enum: ["Bronze", "Gold", "Platinum", "Silver"]
+                    }
+                }
+            },
+            shoppingCart: {
+                title: "Shopping cart",
+                type: "object",
+                properties: {
+                    items: {
+                        title: "item",
+                        type: "array",
+                        items: {
+                            title: "Item",
+                            type: "object",
+                            properties: {
+                                name: {
+                                    title: "name",
+                                    type: "string"
+                                },
+                                price: {
+                                    title: "price",
+                                    type: "number",
+                                    format: "double"
+                                }
+                            }
+                        }
+                    },
+                    price: {
+                        title: "price",
+                        type: "number",
+                        format: "double"
+                    }
+                }
+            }
+        }
+    };
+
+    const result = expandJSONSchemaDefinition(schema, defs);
+    expect(result).toEqual(expected);
+
+    // Verify that the $ref in array items was expanded
+    expect(result.properties.shoppingCart.properties.items.items).toHaveProperty('type', 'object');
+    expect(result.properties.shoppingCart.properties.items.items).not.toHaveProperty('$ref');
+});

@@ -35,6 +35,13 @@ function walk(schema: OpenAPIV3_1.SchemaObject, defs: any, history: any): boolea
         }
         return false;
     }
+
+    // Handle arrays with items that may contain $ref
+    if (schema.type === 'array' && (schema as any).items) {
+        walk((schema as any).items, defs, history);
+        return false;
+    }
+
     if ((schema as any)["$ref"]) {
         const canonicalRef = (schema as any)['$ref'];
 
