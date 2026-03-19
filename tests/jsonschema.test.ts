@@ -175,3 +175,118 @@ test('expandJSONSchemaDefinition removes attributes with circular $ref definitio
     const spouse = result.properties.input.properties.borrower.properties.spouse;
     expect(spouse).toBeUndefined();
 });
+
+test('expandJSONSchemaDefinition handles null properties gracefully', () => {
+    const defs = {
+        loan: {
+            type: 'object',
+            properties: {
+                amount: { type: 'integer' }
+            }
+        }
+    };
+
+    const schema = {
+        type: 'object',
+        properties: {
+            loan: { $ref: '#/components/schemas/loan' },
+            invalidField: null as any
+        }
+    };
+
+    // Should not throw an error when encountering null property
+    expect(() => expandJSONSchemaDefinition(schema, defs)).not.toThrow();
+
+    const result = expandJSONSchemaDefinition(schema, defs);
+    
+    // The loan property should be expanded correctly
+    expect(result.properties.loan).toEqual({
+        type: 'object',
+        properties: {
+            amount: { type: 'integer' }
+        }
+    });
+    
+    // The null property should remain null
+    expect(result.properties.invalidField).toBeNull();
+});
+
+test('expandJSONSchemaDefinition handles undefined properties gracefully', () => {
+    const defs = {
+        person: {
+            type: 'object',
+            properties: {
+                name: { type: 'string' }
+            }
+        }
+    };
+
+    const schema = {
+        type: 'object',
+        properties: {
+            person: { $ref: '#/components/schemas/person' },
+            undefinedField: undefined as any
+        }
+    };
+
+    // Should not throw an error when encountering undefined property
+    expect(() => expandJSONSchemaDefinition(schema, defs)).not.toThrow();
+
+    const result = expandJSONSchemaDefinition(schema, defs);
+    
+    // The person property should be expanded correctly
+    expect(result.properties.person).toEqual({
+        type: 'object',
+        properties: {
+            name: { type: 'string' }
+        }
+    });
+    
+    // The undefined property should remain undefined
+    expect(result.properties.undefinedField).toBeUndefined();
+});
+
+test('expandJSONSchemaDefinition handles mixed valid and null properties', () => {
+    const defs = {
+        address: {
+            type: 'object',
+            properties: {
+                street: { type: 'string' },
+                city: { type: 'string' }
+            }
+        }
+    };
+
+    const schema = {
+        type: 'object',
+        properties: {
+            name: { type: 'string' },
+            address: { $ref: '#/components/schemas/address' },
+            nullField1: null as any,
+            age: { type: 'integer' },
+            nullField2: null as any
+        }
+    };
+
+    // Should not throw an error
+    expect(() => expandJSONSchemaDefinition(schema, defs)).not.toThrow();
+
+    const result = expandJSONSchemaDefinition(schema, defs);
+    
+    // Valid properties should be preserved
+    expect(result.properties.name).toEqual({ type: 'string' });
+    expect(result.properties.age).toEqual({ type: 'integer' });
+    
+    // $ref should be expanded
+    expect(result.properties.address).toEqual({
+        type: 'object',
+        properties: {
+            street: { type: 'string' },
+            city: { type: 'string' }
+        }
+    });
+    
+    // Null properties should remain null
+    expect(result.properties.nullField1).toBeNull();
+    expect(result.properties.nullField2).toBeNull();
+});
