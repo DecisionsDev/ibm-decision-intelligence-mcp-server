@@ -19,6 +19,10 @@ import { OpenAPIV3_1 } from "openapi-types";
 import { debug } from "./debug.js";
 
 function walk(schema: OpenAPIV3_1.SchemaObject, defs: any, history: any): boolean {
+    // Handle null or undefined schemas
+    if (!schema || typeof schema !== 'object') {
+        return false;
+    }
     
     if (schema.type === 'object') {
         if (schema.properties) {
@@ -27,10 +31,17 @@ function walk(schema: OpenAPIV3_1.SchemaObject, defs: any, history: any): boolea
                 if (walk(property, defs, history)) {
                     delete((schema.properties as any)[key]);
                 }
-            }   
+            }
         }
         return false;
     }
+
+    // Handle arrays with items that may contain $ref
+    if (schema.type === 'array' && (schema as any).items) {
+        walk((schema as any).items, defs, history);
+        return false;
+    }
+
     if ((schema as any)["$ref"]) {
         const canonicalRef = (schema as any)['$ref'];
 

@@ -889,4 +889,65 @@ describe('Mcp Server', () => {
             await server?.close();
         }
     });
+
+    test.skip('should skip tools with invalid schemas', async () => {
+        const deploymentSpace = 'staging';
+        const decisionIds = ['valid.decision.id', 'invalid.decision.id'];
+        const { transport, clientTransport, configuration } = createTestEnvironment({
+            deploymentSpaces: [deploymentSpace],
+            decisionIds,
+            isOverridingToolName: false
+        });
+        let server: McpServer | undefined;
+
+        try {
+            // Set up mocks where the second decision service has an invalid schema
+            // (unresolved $ref that will fail after expansion and validation)
+            setupNockMocks({
+                configuration,
+                decisionIds,
+                isOverridingToolName: false,
+                schemaModifier: (openApiContent: any) => {
+                    // Only modify the second decision service (invalid.decision.id)
+                    if (openApiContent.info.title.includes('invalid.decision.id')) {
+                        // Deep clone the object to ensure modifications persist
+                        const modified = JSON.parse(JSON.stringify(openApiContent));
+                        // Add a property with an unresolved $ref to create an invalid schema
+                        // After expansion, this will have a missing reference which makes the schema invalid
+                        modified.components.schemas.approval_input.properties.invalidRef = {
+                            $ref: '#/components/schemas/NonExistentSchema'
+                        };
+                        console.log('Modified approval_input properties:', Object.keys(modified.components.schemas.approval_input.properties));
+                        return modified;
+                    }
+                    return openApiContent;
+                }
+            });
+
+            const result = await createMcpServer('test-server', configuration);
+            server = result.server;
+            expect(server.isConnected()).toEqual(true);
+
+            const client = await createAndConnectClient(clientTransport);
+
+            // List tools - should only have 1 tool (the valid one)
+            const toolsResponse = await client.listTools();
+            expect(toolsResponse.tools).toBeDefined();
+            expect(toolsResponse.tools.length).toBe(1);
+
+            // Verify the valid tool is present
+            const validTool = toolsResponse.tools[0];
+            expect(validTool.name).toContain('valid.decision.id');
+
+            // Verify the invalid tool is NOT present
+            const invalidToolExists = toolsResponse.tools.some(t => t.name.includes('invalid.decision.id'));
+            expect(invalidToolExists).toBe(false);
+
+            await client.close();
+        } finally {
+            await clientTransport?.close();
+            await transport?.close();
+            await server?.close();
+        }
+    });
 });

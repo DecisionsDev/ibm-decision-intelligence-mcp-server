@@ -152,6 +152,9 @@ describe('MCP server with invalid decision service ID', () => {
         const { transport, clientTransport, configuration } = createInvalidDecisionServiceEnvironment();
         let server: McpServer | undefined;
         
+        // Suppress console.error output during this test to avoid confusion
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+        
         try {
             // Create the MCP server with invalid decision service ID
             // This should NOT throw an error, but should log a warning and continue
@@ -173,6 +176,7 @@ describe('MCP server with invalid decision service ID', () => {
 
             await client.close();
         } finally {
+            consoleErrorSpy.mockRestore();
             await clientTransport?.close();
             await transport?.close();
             await server?.close();
