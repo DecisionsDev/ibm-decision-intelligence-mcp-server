@@ -27,7 +27,7 @@ export class Configuration {
     static readonly TRANSPORTS: string[] = [Configuration.STDIO, Configuration.HTTP];
     // Public contract (CLI/env/docs) is in seconds
     private static readonly MIN_POLL_INTERVAL_S = 1;
-    private static readonly DEFAULT_POLL_INTERVAL_S = 30;
+    private static readonly DEFAULT_POLL_INTERVAL_S = 600;
     private static readonly MS_IN_ONE_SECOND = 1000;
     private static readonly MS_IN_ONE_MINUTE = 60_000;
 
