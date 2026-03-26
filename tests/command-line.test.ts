@@ -1139,7 +1139,7 @@ describe('CLI Configuration', () => {
             ]);
 
             expect(config.pollIntervalMs).toBe(Configuration.defaultPollIntervalMs());
-            expect(config.pollIntervalMs).toBe(30000);
+            expect(config.pollIntervalMs).toBe(600000);
         });
 
         test('should throw error for non-numeric poll interval', () => {
@@ -1328,7 +1328,7 @@ describe('CLI Configuration', () => {
             expect(config.formattedPollInterval()).toBe('1min 15.500s');
         });
 
-        test('should format default interval (30 seconds)', () => {
+        test('should format default interval (10 min)', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
@@ -1336,7 +1336,7 @@ describe('CLI Configuration', () => {
                 '--transport', 'STDIO'
             ]);
 
-            expect(config.formattedPollInterval()).toBe('30s');
+            expect(config.formattedPollInterval()).toBe('10min');
         });
 
         test('should format large interval (multiple minutes)', () => {
