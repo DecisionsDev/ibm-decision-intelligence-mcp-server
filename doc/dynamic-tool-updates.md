@@ -23,7 +23,7 @@ The MCP server implements the `listChanged` capability, which allows it to autom
 
 ## Configuration
 
-The dynamic tool update feature is enabled by default and requires no additional configuration. The decisions polling interval defaults to 30 seconds, which provides a good balance between responsiveness and system load.
+The dynamic tool update feature is enabled by default and requires no additional configuration. The decisions polling interval defaults to 10 minutes, which provides a good balance between responsiveness and system load.
 
 You can customize the polling interval using the `--decision-service-poll-interval` option or the `DECISION_SERVICE_POLL_INTERVAL` environment variable:
 
