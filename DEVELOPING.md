@@ -72,7 +72,7 @@ APIKEY=<APIKEY> URL=<URL> npm run dev
   - npm run build
   - npm run test
 - Create a new branch for the release
-- Bump the version in `package.json`
+- Bump the version in BOTH `package.json` and `package-lock.json` (use `npm version ...`)
 - Commit the changes, push to the release branch and create a pull request
 - Merge the release branch into main
 - Create a new release in GitHub
