@@ -1,14 +1,14 @@
-# MCP server for IBM Decision Intelligence and IBM Automation Decision Services
+# MCP server for IBM Decision Intelligence and IBM Decision Intelligence Client Managed Software
 
 [![Build and test](https://github.com/DecisionsDev/di-mcp-server/actions/workflows/build.yml/badge.svg)](https://github.com/DecisionsDev/di-mcp-server/actions/workflows/build.yml) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![npm Version](https://badge.fury.io/js/di-mcp-server.svg)](https://www.npmjs.com/package/di-mcp-server) ![npm Downloads](https://img.shields.io/npm/dw/di-mcp-server)
 
 ```mermaid
 flowchart LR
    client("AI Assistant <br><br>(Claude, Watsonx Orchestrate, etc.)") -- MCP --> server("Decision Intelligence<br>MCP Server")
-   server -- HTTPS --> runtime("IBM Decision Intelligence <br>or IBM ADS <br><br>Decision Runtime")
+   server -- HTTPS --> runtime("IBM Decision Intelligence <br>or IBM DI CMS <br><br>Decision Runtime")
 ```
 
-This Model Context Protocol (MCP) server empowers AI assistants by accessing decisions from [IBM Decision Intelligence](https://www.ibm.com/products/decision-intelligence) or [IBM Automation Decision Services](https://www.ibm.com/products/automation-decision-services).
+This Model Context Protocol (MCP) server empowers AI assistants by accessing decisions from [IBM Decision Intelligence](https://www.ibm.com/products/decision-intelligence) or [IBM Decision Intelligence Client Managed Software](https://www.ibm.com/products/decision-intelligence-client-managed-software).
 
 The MCP server is available as an npm package in the free npm registry at https://www.npmjs.com/package/di-mcp-server.
 
@@ -36,11 +36,11 @@ Create the MCP server by using decisions that are deployed in Decision Intellige
 npx -y di-mcp-server --di-apikey <YOUR_DI_API_KEY> --url https://mytenant.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1
 ```
 
-### For IBM Automation Decision Services
+### For IBM Decision Intelligence Client Managed Software (IBM DI CMS)
 
 #### Zen API key authentication
 
-Create the MCP server by using decisions that are deployed in Automation Decision Services that uses the Zen API key authentication:
+Create the MCP server by using decisions that are deployed in IBM DI CMS that uses the Zen API key authentication:
 
 ```bash
 npx -y di-mcp-server --authentication-mode zenapikey --zen-username <YOUR_ZEN_USERNAME> --zen-apikey <YOUR_ZEN_API_KEY> --url https://myads-hostname/ads/runtime/api/v1
@@ -48,7 +48,7 @@ npx -y di-mcp-server --authentication-mode zenapikey --zen-username <YOUR_ZEN_US
 
 #### Basic authentication
 
-Create the MCP server by using decisions that are deployed in Automation Decision Services that uses the basic authentication:
+Create the MCP server by using decisions that are deployed in IBM DI CMS that uses the basic authentication:
 
 ```bash
 npx -y di-mcp-server --authentication-mode basic --basic-username <YOUR_USERNAME> --basic-password <YOUR_PASSWORD> --url https://myads-hostname/ads/runtime/api/v1
@@ -65,8 +65,8 @@ where
 - `AUTHENTICATION_MODE` (optional) is the authentication mode to access the decision runtime; either `diapikey` (default), `zenapikey`, or `basic` respectively for authenticating with the Decision Intelligence API key, Zen API key, or basic credentials (i.e. username and password)
 - `CREDENTIALS` is one of the following options, depending on the chosen authentication mode:
     - For Decision Intelligence API key authentication: `--di-apikey <DI_API_KEY>` where `DI_API_KEY` is the API key to access the decision runtime for Decision Intelligence.
-    - For Zen API key authentication: `--zen-username <ZEN_USERNAME> --apikey <ZEN_API_KEY>` where `ZEN_USERNAME` and `ZEN_API_KEY` are the Zen API key credentials to access the decision runtime for Automation Decision Services (see [Authorizing HTTP requests by using the Zen API key](https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=administering-authorizing-http-requests-by-using-zen-api-key))
-    - For basic authentication: `--basic-username <BASIC_USERNAME> --basic-password <BASIC_PASSWORD>` where `BASIC_USERNAME` and `BASIC_PASSWORD` are the basic authentication credentials to connect to the decision runtime for Automation Decision Services.
+    - For Zen API key authentication: `--zen-username <ZEN_USERNAME> --apikey <ZEN_API_KEY>` where `ZEN_USERNAME` and `ZEN_API_KEY` are the Zen API key credentials to access the decision runtime for IBM DI CMS (see [Authorizing HTTP requests by using the Zen API key](https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=administering-authorizing-http-requests-by-using-zen-api-key))
+    - For basic authentication: `--basic-username <BASIC_USERNAME> --basic-password <BASIC_PASSWORD>` where `BASIC_USERNAME` and `BASIC_PASSWORD` are the basic authentication credentials to connect to the decision runtime for IBM DI CMS.
 - `RUNTIME_BASE_URL` is the base URL of the decision runtime REST API. For Decision Intelligence, its pattern is: `https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1` where TENANT_NAME is the name of the tenant.
 - `TRANSPORT` (optional) is the transport protocol, either `stdio` (default) or `http`.
 - `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `development`).
@@ -329,7 +329,7 @@ flowchart LR
 
     server -- HTTPS --> runtime("Decision Runtime")
 
-    subgraph id["Decision Intelligence<br>or Automation Decision Services"]
+    subgraph id["Decision Intelligence<br>or Decision Intelligence Client Managed Software"]
         runtime
     end
 
@@ -346,7 +346,7 @@ flowchart LR
 ## Notice
 
 ```text
-Copyright contributors to the IBM ADS/Decision Intelligence MCP Server project
+Copyright contributors to the IBM Decision Intelligence / Decision Intelligence Client Managed Software MCP Server project
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
