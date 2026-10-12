@@ -88,8 +88,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.url).toBe(url);
@@ -100,8 +99,7 @@ describe('CLI Configuration', () => {
             expect(() => {
                 createConfiguration(version, [
                     'node', 'cli.js',
-                    '--di-apikey', 'validkey123',
-                    '--transport', 'stdio'
+                    '--di-apikey', 'validkey123'
                 ]);
             }).toThrow('The decision runtime REST API URL is not defined');
         });
@@ -111,8 +109,7 @@ describe('CLI Configuration', () => {
                 createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', 'invalid-url',
-                    '--di-apikey', 'validkey123',
-                    '--transport', 'StDiO'
+                    '--di-apikey', 'validkey123'
                 ]);
             }).toThrow('Invalid URL format: \'invalid-url\'');
         });
@@ -123,8 +120,7 @@ describe('CLI Configuration', () => {
 
             const config = createConfiguration(version, [
                 'node', 'cli.js',
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.url).toBe(urlFromEnv);
@@ -134,62 +130,15 @@ describe('CLI Configuration', () => {
             createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(mockDebug).toHaveBeenCalledWith('URL=https://api.example.com');
         });
     });
 
-    describe('validateTransport', () => {
-        test('should accept valid transports', () => {
-            const stdioConfig = createConfiguration(version, [
-                'node', 'cli.js',
-                '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
-            ]);
-
-            const httpConfig = createConfiguration(version, [
-                'node', 'cli.js',
-                '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'hTtP'
-            ]);
-
-            expect(stdioConfig.transport).toBeInstanceOf(StdioServerTransport);
-            expect(httpConfig.transport).toBe(undefined);
-        });
-
-        test('should throw error for invalid transport', () => {
-            const invalid = 'INVALID';
-            expect(() => {
-                createConfiguration(version, [
-                    'node', 'cli.js',
-                    '--url', url,
-                    '--di-apikey', 'validkey123',
-                    '--transport', invalid
-                ]);
-            }).toThrow(`Invalid transport protocol: '${invalid}'. Must be one of: 'stdio', 'http'`);
-        });
-
-        test('should use transport from environment variable', () => {
-            process.env.TRANSPORT = 'HTTP';
-
-            const config = createConfiguration(version, [
-                'node', 'cli.js',
-                '--url', url,
-                '--di-apikey', 'validkey123'
-            ]);
-
-            expect(config.transport).toBe(undefined);
-        });
-
-        test('should default to STDIO when not specified', () => {
-            // Clear environment variable
-            delete process.env.TRANSPORT;
-
+    describe('transport', () => {
+        test('should always use stdio transport', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
@@ -197,17 +146,6 @@ describe('CLI Configuration', () => {
             ]);
 
             expect(config.transport).toBeInstanceOf(StdioServerTransport);
-        });
-
-        test('should call debug function with transport', () => {
-            createConfiguration(version, [
-                'node', 'cli.js',
-                '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'HTTP'
-            ]);
-
-            expect(mockDebug).toHaveBeenCalledWith('TRANSPORT=HTTP');
         });
     });
 
@@ -217,7 +155,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--authentication-mode', 'DiApiKey'
             ]);
             expect(diApiKeyConfig.credentials.authenticationMode).toBe(AuthenticationMode.DI_API_KEY);
@@ -227,7 +164,6 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--zen-apikey', 'validkey123',
                 '--zen-username', 'foobar',
-                '--transport', 'STDIO',
                 '--authentication-mode', 'ZenApiKey'
             ]);
             expect(zenApiKeyConfig.credentials.authenticationMode).toBe(AuthenticationMode.ZEN_API_KEY);
@@ -237,7 +173,6 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--basic-username', 'foobar',
                 '--basic-password', 'babar',
-                '--transport', 'STDIO',
                 '--authentication-mode', 'Basic'
             ]);
             expect(basiconfig.credentials.authenticationMode).toBe(AuthenticationMode.BASIC);
@@ -247,8 +182,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.credentials.authenticationMode).toBe(AuthenticationMode.DI_API_KEY);
@@ -263,7 +197,6 @@ describe('CLI Configuration', () => {
                     'node', 'cli.js',
                     '--url', url,
                     '--di-apikey', 'validkey123',
-                    '--transport', 'STDIO',
                     '--authentication-mode', invalid
                 ]);
             }).toThrow(`Invalid authentication mode: '${invalid}'. Must be one of: 'diapikey', 'zenapikey', 'basic'`);
@@ -276,8 +209,7 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--basic-username', 'toto',
-                '--basic-password', 'tutu',
-                '--transport', 'STDIO'
+                '--basic-password', 'tutu'
             ]);
 
             expect(config.credentials.authenticationMode).toBe(AuthenticationMode.BASIC);
@@ -288,7 +220,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--authentication-mode', 'DiApiKey'
             ]);
 
@@ -301,7 +232,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--authentication-mode', diApiKey
             ]);
 
@@ -315,8 +245,7 @@ describe('CLI Configuration', () => {
             expect(() => {
                 createConfiguration(version, [
                     'node', 'cli.js',
-                    '--url', url,
-                    '--transport', 'STDIO'
+                    '--url', url
                 ]);
             }).toThrow('The DI API key must be defined');
         });
@@ -327,8 +256,7 @@ describe('CLI Configuration', () => {
                 const config = createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--di-apikey', apiKey,
-                    '--transport', 'STDIO'
+                    '--di-apikey', apiKey
                 ]);
 
                 expect(config).toMatchObject({
@@ -342,8 +270,7 @@ describe('CLI Configuration', () => {
                 expect(() => {
                     createConfiguration(version, [
                         'node', 'cli.js',
-                        '--url', url,
-                        '--transport', 'STDIO'
+                        '--url', url
                     ]);
                 }).toThrow('The DI API key must be define');
             });
@@ -353,8 +280,7 @@ describe('CLI Configuration', () => {
                     createConfiguration(version, [
                         'node', 'cli.js',
                         '--url', url,
-                        '--di-apikey', '   ',
-                        '--transport', 'STDIO'
+                        '--di-apikey', '   '
                     ]);
                 }).toThrow('The DI API key cannot be empty');
             });
@@ -365,8 +291,7 @@ describe('CLI Configuration', () => {
 
                 const config = createConfiguration(version, [
                     'node', 'cli.js',
-                    '--url', url,
-                    '--transport', 'STDIO'
+                    '--url', url
                 ]);
 
                 expect(config).toMatchObject({
@@ -381,8 +306,7 @@ describe('CLI Configuration', () => {
                 const config = createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--di-apikey', apiKey,
-                    '--transport', 'STDIO'
+                    '--di-apikey', apiKey
                 ]);
 
                 expect(config).toMatchObject({
@@ -396,8 +320,7 @@ describe('CLI Configuration', () => {
                 createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--di-apikey', apiKey,
-                    '--transport', 'STDIO'
+                    '--di-apikey', apiKey
                 ]);
 
                 expect(mockDebug).toHaveBeenCalledWith('DI API Key(API key: ***)');
@@ -415,8 +338,7 @@ describe('CLI Configuration', () => {
                     '--url', url,
                     '--zen-apikey', apiKey,
                     '--zen-username', username,
-                    '--authentication-mode', 'zenApiKEY',
-                    '--transport', 'STDIO'
+                    '--authentication-mode', 'zenApiKEY'
                 ]);
 
                 expect(config).toMatchObject({
@@ -432,8 +354,7 @@ describe('CLI Configuration', () => {
                     createConfiguration(version, [
                         'node', 'cli.js',
                         '--url', url,
-                        '--authentication-mode', 'zenApiKEY',
-                        '--transport', 'STDIO'
+                        '--authentication-mode', 'zenApiKEY'
                     ]);
                 }).toThrow('The Zen API key must be defined');
             });
@@ -444,8 +365,7 @@ describe('CLI Configuration', () => {
                         'node', 'cli.js',
                         '--url', url,
                         '--zen-apikey', '   ',
-                        '--authentication-mode', 'ZENAPIKEY',
-                        '--transport', 'STDIO'
+                        '--authentication-mode', 'ZENAPIKEY'
                     ]);
                 }).toThrow('The Zen API key cannot be empty');
             });
@@ -456,8 +376,7 @@ describe('CLI Configuration', () => {
                         'node', 'cli.js',
                         '--url', url,
                         '--zen-apikey', apiKey,
-                        '--authentication-mode', 'zenApiKEY',
-                        '--transport', 'STDIO'
+                        '--authentication-mode', 'zenApiKEY'
                     ]);
                 }).toThrow('The Zen username must be defined');
             });
@@ -469,8 +388,7 @@ describe('CLI Configuration', () => {
                         '--url', url,
                         '--zen-apikey', apiKey,
                         '--zen-username', '   ',
-                        '--authentication-mode', 'ZENAPIKEY',
-                        '--transport', 'STDIO'
+                        '--authentication-mode', 'ZENAPIKEY'
                     ]);
                 }).toThrow('The Zen username cannot be empty');
             });
@@ -482,7 +400,6 @@ describe('CLI Configuration', () => {
                 const config = createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--transport', 'STDIO',
                     '--zen-username', username,
                     '--authentication-mode', 'ZENAPIKEY'
                 ]);
@@ -501,8 +418,7 @@ describe('CLI Configuration', () => {
                     'node', 'cli.js',
                     '--url', url,
                     '--zen-apikey', apiKey,
-                    '--zen-username', username,
-                    '--transport', 'STDIO'
+                    '--zen-username', username
                 ]);
 
                 expect(config).toMatchObject({
@@ -519,8 +435,7 @@ describe('CLI Configuration', () => {
                     '--url', url,
                     '--zen-apikey', apiKey,
                     '--zen-username', username,
-                    '--authentication-mode', 'zenAPIkey',
-                    '--transport', 'STDIO'
+                    '--authentication-mode', 'zenAPIkey'
                 ]);
 
                 expect(mockDebug).toHaveBeenCalledWith(`Zen API Key(username: ${username}, API key: ***)`);
@@ -537,8 +452,7 @@ describe('CLI Configuration', () => {
                     '--url', url,
                     '--basic-username', username,
                     '--basic-password', password,
-                    '--authentication-mode', 'BASIC',
-                    '--transport', 'STDIO'
+                    '--authentication-mode', 'BASIC'
                 ]);
 
                 expect(config).toMatchObject({
@@ -554,8 +468,7 @@ describe('CLI Configuration', () => {
                     createConfiguration(version, [
                         'node', 'cli.js',
                         '--url', url,
-                        '--authentication-mode', 'bAsIc',
-                        '--transport', 'STDIO'
+                        '--authentication-mode', 'bAsIc'
                     ]);
                 }).toThrow('The username for basic authentication must be defined');
             });
@@ -567,8 +480,7 @@ describe('CLI Configuration', () => {
                         '--url', url,
                         '--basic-username', '   ',
                         '--basic-password', password,
-                        '--authentication-mode', 'basic',
-                        '--transport', 'STDIO'
+                        '--authentication-mode', 'basic'
                     ]);
                 }).toThrow('The username for basic authentication cannot be empty');
             });
@@ -579,8 +491,7 @@ describe('CLI Configuration', () => {
                         'node', 'cli.js',
                         '--url', url,
                         '--basic-username', username,
-                        '--authentication-mode', 'BAsic',
-                        '--transport', 'STDIO'
+                        '--authentication-mode', 'BAsic'
                     ]);
                 }).toThrow('The password for basic authentication must be defined');
             });
@@ -592,8 +503,7 @@ describe('CLI Configuration', () => {
                         '--url', url,
                         '--basic-username', username,
                         '--basic-password', '   ',
-                        '--authentication-mode', 'BAsic',
-                        '--transport', 'STDIO'
+                        '--authentication-mode', 'BAsic'
                     ]);
                 }).toThrow('The password for basic authentication cannot be empty');
             });
@@ -605,7 +515,6 @@ describe('CLI Configuration', () => {
                 const config = createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--transport', 'STDIO',
                     '--basic-password', password,
                     '--authentication-mode', 'Basic'
                 ]);
@@ -624,7 +533,6 @@ describe('CLI Configuration', () => {
                 const config = createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--transport', 'STDIO',
                     '--basic-username', username,
                     '--authentication-mode', 'Basic'
                 ]);
@@ -643,8 +551,7 @@ describe('CLI Configuration', () => {
                     'node', 'cli.js',
                     '--url', url,
                     '--basic-username', username,
-                    '--basic-password', password,
-                    '--transport', 'STDIO'
+                    '--basic-password', password
                 ]);
 
                 expect(config).toMatchObject({
@@ -661,8 +568,7 @@ describe('CLI Configuration', () => {
                     '--url', url,
                     '--basic-username', username,
                     '--basic-password', password,
-                    '--authentication-mode', 'BASiC',
-                    '--transport', 'STDIO'
+                    '--authentication-mode', 'BASiC'
                 ]);
 
                 expect(mockDebug).toHaveBeenCalledWith(`Basic Authentication(username: ${username}, password: ***)`);
@@ -679,7 +585,6 @@ describe('CLI Configuration', () => {
                 '--url', url,
                 '--zen-apikey', apiKey,
                 '--zen-username', username,
-                '--transport', 'HTTP',
                 '--authentication-mode', 'ZenApiKey'
             ]);
 
@@ -689,7 +594,7 @@ describe('CLI Configuration', () => {
                     username: username,
                     authenticationMode: AuthenticationMode.ZEN_API_KEY
                 },
-                transport: undefined,
+                transport: expect.any(StdioServerTransport),
                 url: url,
                 version: version,
                 debugEnabled: true
@@ -699,7 +604,6 @@ describe('CLI Configuration', () => {
         test('should create configuration with defaults', () => {
             process.env.URL = url;
             process.env.DI_APIKEY = apiKey;
-            process.env.TRANSPORT = 'STDIO';
 
             const config = createConfiguration(version, ['node', 'cli.js']);
 
@@ -719,7 +623,6 @@ describe('CLI Configuration', () => {
         test('should handle debug flag from CLI argument', () => {
             process.env.URL = url;
             process.env.DI_APIKEY = apiKey;
-            process.env.TRANSPORT = 'STDIO';
 
             const config = createConfiguration(version, ['node', 'cli.js', '--debug']);
 
@@ -731,7 +634,6 @@ describe('CLI Configuration', () => {
             process.env.DEBUG = 'true';
             process.env.URL = url;
             process.env.DI_APIKEY = apiKey;
-            process.env.TRANSPORT = 'STDIO';
 
             const config = createConfiguration(version, ['node', 'cli.js']);
 
@@ -742,7 +644,6 @@ describe('CLI Configuration', () => {
         test('should prioritize CLI arguments over environment variables', () => {
             process.env.URL = 'https://env-api.example.com';
             process.env.ZEN_APIKEY = 'env-api-key';
-            process.env.TRANSPORT = 'STDIO';
             process.env.RUNTIME = 'DI';
             process.env.ZEN_USERNAME = 'env username';
             process.env.AUTHENTICATION_MODE =  AuthenticationMode.BASIC;
@@ -758,7 +659,6 @@ describe('CLI Configuration', () => {
                 '--url', urlFromCli,
                 '--zen-apikey', cliApiKey,
                 '--zen-username', cliUserName,
-                '--transport', 'HTTP',
                 '--authentication-mode', cliAuthenticationMode,
                 '--deployment-spaces', deploymentSpaces.join(',')
             ]);
@@ -768,7 +668,7 @@ describe('CLI Configuration', () => {
                     apikey: cliApiKey,
                     authenticationMode: cliAuthenticationMode,
                 },
-                transport: undefined,
+                transport: expect.any(StdioServerTransport),
                 url: urlFromCli,
                 deploymentSpaces: deploymentSpaces
             });
@@ -779,7 +679,6 @@ describe('CLI Configuration', () => {
             test(`'DiApiKey' authentication mod`, () => {
                 process.env.URL = url;
                 process.env.DI_APIKEY = apiKey;
-                process.env.TRANSPORT = 'STDIO';
 
                 const config = createConfiguration(version, [
                     'node', 'cli.js'
@@ -793,7 +692,6 @@ describe('CLI Configuration', () => {
             test(`'ZenApiKey' authentication mode`, () => {
                 process.env.URL = url;
                 process.env.ZEN_APIKEY = apiKey;
-                process.env.TRANSPORT = 'STDIO';
 
                 const config = createConfiguration(version, [
                     'node', 'cli.js',
@@ -809,7 +707,6 @@ describe('CLI Configuration', () => {
             test(`'Basic' authentication mode`, () => {
                 process.env.URL = url;
                 process.env.BASIC_USERNAME = 'foo bar bra';
-                process.env.TRANSPORT = 'STDIO';
 
                 const config = createConfiguration(version, [
                     'node', 'cli.js',
@@ -821,26 +718,6 @@ describe('CLI Configuration', () => {
                 expect(config.isZenAPiKeyAuthentication()).toBe(false);
                 expect(config.isBasicAuthentication()).toBe(true);
             });
-        });
-
-        test('should set transport helper properties correctly', () => {
-            process.env.URL = url;
-            process.env.DI_APIKEY = apiKey;
-
-            const stdioConfig = createConfiguration(version, [
-                'node', 'cli.js',
-                '--transport', 'STDIO'
-            ]);
-
-            const httpConfig = createConfiguration(version, [
-                'node', 'cli.js',
-                '--transport', 'HTTP'
-            ]);
-
-            expect(stdioConfig.isStdioTransport()).toBe(true);
-            expect(stdioConfig.isHttpTransport()).toBe(false);
-            expect(httpConfig.isStdioTransport()).toBe(false);
-            expect(httpConfig.isHttpTransport()).toBe(true);
         });
 
         test('should parse arguments when no arguments provided', () => {
@@ -879,7 +756,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--deployment-spaces', deploymentSpaces.join(',')
             ]);
 
@@ -892,7 +768,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--deployment-spaces', `  ${deploymentSpace}        `
             ]);
 
@@ -904,7 +779,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--deployment-spaces', '     development         ,  production     ,  test  '
             ]);
 
@@ -916,7 +790,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--deployment-spaces', '     ,     ,       ,     '
             ]);
 
@@ -927,8 +800,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.deploymentSpaces).toEqual(encodedDefaultDeploymentSpaces);
@@ -954,7 +826,6 @@ describe('CLI Configuration', () => {
                         'node', 'cli.js',
                         '--url', url,
                         '--di-apikey', 'validkey123',
-                        '--transport', 'STDIO',
                         '--deployment-spaces', `development,${invalidSpace}`
                     ]);
                 }).toThrow(`Invalid deployment space '${invalidSpace}' cannot be URI encoded.`);
@@ -985,7 +856,6 @@ describe('CLI Configuration', () => {
                         'node', 'cli.js',
                         '--url', url,
                         '--di-apikey', 'validkey123',
-                        '--transport', 'STDIO',
                         '--deployment-spaces', `development,${invalidSpace1},${invalidSpace2},${invalidSpace3},production`
                     ]);
                 }).toThrow(`Invalid deployment spaces '${invalidSpace1}', '${invalidSpace2}', '${invalidSpace3}' cannot be URI encoded.`);
@@ -1002,8 +872,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.deploymentSpaces).toEqual(deploymentSpaces.map(ds => encodeURIComponent(ds)));
@@ -1015,7 +884,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--deployment-spaces', deploymentSpaces
             ]);
 
@@ -1028,22 +896,9 @@ describe('CLI Configuration', () => {
             expect(() => {
                 createConfiguration(version, [
                     'node', 'cli.js',
-                    '--url', 'invalid-url',
-                    '--transport', 'INVALID'
+                    '--url', 'invalid-url'
                 ]);
             }).toThrow(`The DI API key must be defined`); // Should throw on invalid API key first
-        });
-
-        test('should provide descriptive error messages', () => {
-            const invalid = 'WEBSOCKET';
-            expect(() => {
-                createConfiguration(version, [
-                    'node', 'cli.js',
-                    '--url', url,
-                    '--di-apikey', 'validkey123',
-                    '--transport', invalid
-                ]);
-            }).toThrow(`Invalid transport protocol: '${invalid}'. Must be one of: 'stdio', 'http'`);
         });
     });
 
@@ -1052,8 +907,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.decisionServiceIds).toEqual(undefined);
@@ -1064,7 +918,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-ids', "A,B"
             ]);
 
@@ -1076,7 +929,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-ids', "A,B\\,C,D"
             ]);
             expect(config.decisionServiceIds).toEqual(["A", "B,C", "D"]);
@@ -1087,7 +939,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-ids', "A,B\\,"
             ]);
             expect(config.decisionServiceIds).toEqual(["A", "B,"]);
@@ -1098,7 +949,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-ids', "A\\,\\,B,C"
             ]);
             expect(config.decisionServiceIds).toEqual(["A,,B", "C"]);
@@ -1109,7 +959,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-ids', "   ,   ,   "
             ]);
             expect(config.decisionServiceIds).toEqual(undefined);
@@ -1122,7 +971,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '60'
             ]);
 
@@ -1134,8 +982,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.pollIntervalMs).toBe(Configuration.defaultPollIntervalMs());
@@ -1148,7 +995,6 @@ describe('CLI Configuration', () => {
                     'node', 'cli.js',
                     '--url', url,
                     '--di-apikey', 'validkey123',
-                    '--transport', 'STDIO',
                     '--decision-service-poll-interval', 'invalid'
                 ]);
             }).toThrow("Invalid poll interval: 'invalid'. Must be a valid number in seconds.");
@@ -1161,7 +1007,6 @@ describe('CLI Configuration', () => {
                     'node', 'cli.js',
                     '--url', url,
                     '--di-apikey', 'validkey123',
-                    '--transport', 'STDIO',
                     '--decision-service-poll-interval', invalidPollInterval
                 ]);
             }).toThrow(`Invalid poll interval: '${invalidPollInterval}'. Must be at least 1 second.`);
@@ -1172,7 +1017,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '1'
             ]);
 
@@ -1185,8 +1029,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.pollIntervalMs).toBe(45000);
@@ -1199,7 +1042,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '60'
             ]);
 
@@ -1211,7 +1053,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '60'
             ]);
 
@@ -1241,7 +1082,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '1'
             ]);
 
@@ -1253,7 +1093,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '30'
             ]);
 
@@ -1281,7 +1120,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '60'
             ]);
 
@@ -1293,7 +1131,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '120'
             ]);
 
@@ -1305,7 +1142,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '90'
             ]);
 
@@ -1332,8 +1168,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.formattedPollInterval()).toBe('10min');
@@ -1344,7 +1179,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '300'
             ]);
 
@@ -1356,7 +1190,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-poll-interval', '125'
             ]);
 
@@ -1369,7 +1202,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', 'group1'
             ]);
 
@@ -1381,7 +1213,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', 'group1,group2,group3'
             ]);
 
@@ -1393,7 +1224,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', 'group1 , group2 , group3'
             ]);
 
@@ -1405,7 +1235,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', 'group\\,with\\,commas,group2'
             ]);
 
@@ -1417,7 +1246,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', 'group-1,group_2,group.3'
             ]);
 
@@ -1429,7 +1257,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', 'group1,,group2,  ,group3'
             ]);
 
@@ -1440,8 +1267,7 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--transport', 'STDIO'
+                '--di-apikey', 'validkey123'
             ]);
 
             expect(config.mcpGroups).toBeUndefined();
@@ -1452,7 +1278,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', ''
             ]);
 
@@ -1464,7 +1289,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', '   '
             ]);
 
@@ -1476,7 +1300,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', ',,,'
             ]);
 
@@ -1488,7 +1311,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', '  group1  '
             ]);
 
@@ -1500,7 +1322,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', 'group\\,1,group2\\,with\\,many\\,commas,group3'
             ]);
 
@@ -1512,7 +1333,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--deployment-spaces', 'dev,prod',
                 '--mcp-groups', 'frontend,backend'
             ]);
@@ -1526,7 +1346,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--decision-service-ids', 'service1,service2',
                 '--mcp-groups', 'group1,group2'
             ]);
@@ -1541,7 +1360,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', groups.join(',')
             ]);
 
@@ -1553,7 +1371,6 @@ describe('CLI Configuration', () => {
                 'node', 'cli.js',
                 '--url', url,
                 '--di-apikey', 'validkey123',
-                '--transport', 'STDIO',
                 '--mcp-groups', 'группа1,グループ2,组3'
             ]);
 

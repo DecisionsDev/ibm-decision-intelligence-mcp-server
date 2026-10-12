@@ -22,7 +22,6 @@ import {
     getDecisionServiceOpenAPI,
     getMetadata
 } from './diruntimeclient.js';
-import {runHTTPServer} from "./httpserver.js";
 import {debug} from "./debug.js";
 import {expandJSONSchemaDefinition} from './jsonschema.js';
 import {getToolName} from "./ditool.js";
@@ -30,7 +29,6 @@ import {convertJsonSchemaToZod} from "zod-from-json-schema";
 import { OpenAPIV3_1 } from "openapi-types";
 import { ZodRawShape, ZodType } from "zod";
 import { Configuration } from "./command-line.js";
-import http from "node:http";
 import { JSONSchema } from "zod/v4/core";
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import Ajv from "ajv";
@@ -349,21 +347,7 @@ function handleError(label: string, error: any) {
     debug(`${label}:`, error instanceof Error ? error.message : String(error));
 }
 
-async function setupTransportAndReturnInstance(server: McpServer, configuration: Configuration): Promise<StdioServerTransport | http.Server> {
-    const version = configuration.version;
-    if (configuration.isHttpTransport()) {
-        debug("IBM Decision Intelligence MCP Server version", version, "running on http");
-        const httpServer = runHTTPServer(server);
-        return httpServer;
-    }
-
-    const transport = configuration.transport!;
-    await server.connect(transport);
-    debug("IBM Decision Intelligence MCP Server version", version, "running on stdio");
-    return transport;
-}
-
-export async function createMcpServer(name: string, configuration: Configuration): Promise<{ server: McpServer, transport?: StdioServerTransport, httpServer?: http.Server }> {
+export async function createMcpServer(name: string, configuration: Configuration): Promise<{ server: McpServer, transport: StdioServerTransport }> {
     const version = configuration.version;
     const server = new McpServer({
         name: name,
@@ -410,7 +394,9 @@ export async function createMcpServer(name: string, configuration: Configuration
         }
     }
 
-    const transportOrHttpServer = await setupTransportAndReturnInstance(server, configuration);
+    const transport = configuration.transport;
+    await server.connect(transport);
+    debug("IBM Decision Intelligence MCP Server version", configuration.version, "running on stdio");
 
     // Start polling for tool changes
     debug(`Now polling for tools change every ${configuration.formattedPollInterval()}`);
@@ -418,17 +404,11 @@ export async function createMcpServer(name: string, configuration: Configuration
         await TOOL_CHANGE_MONITOR.checkForChanges(server, configuration, toolDefinitions);
     }, configuration.pollIntervalMs);
 
-    // Clean up interval based on the transport type
-    const isHttp = configuration.isHttpTransport();
-    const httpServer = isHttp ? transportOrHttpServer as http.Server : null;
-
     const originalClose = server.close.bind(server);
     server.close = async () => {
         clearInterval(pollTimer);
-        httpServer?.close();
         return originalClose();
     };
 
-    return isHttp
-        ? { server, httpServer: httpServer! }
-        : { server, transport: transportOrHttpServer as StdioServerTransport };}
+    return { server, transport };
+}

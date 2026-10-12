@@ -12,7 +12,7 @@ This Model Context Protocol (MCP) server empowers AI assistants by accessing dec
 
 The MCP server is available as an npm package in the free npm registry at https://www.npmjs.com/package/di-mcp-server.
 
-It supports both STDIO and streamable HTTP transports for local or remote deployments for supporting any MCP clients.
+It supports the STDIO transport for local MCP communication with any MCP clients.
 
 <a id="resources"></a>
 ## Resources
@@ -58,7 +58,7 @@ npx -y di-mcp-server --authentication-mode basic --basic-username <YOUR_USERNAME
 
 Syntax of the command line:
 ```bash
-npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--transport <TRANSPORT>] [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>] [--decision-service-poll-interval <DECISION_SERVICE_POLL_INTERVAL>]
+npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS> --url <RUNTIME_BASE_URL> [--deployment-spaces <DEPLOYMENT_SPACES>] [--decision-service-ids <DECISION_SERVICE_IDS>] [--decision-service-poll-interval <DECISION_SERVICE_POLL_INTERVAL>]
 ```
 
 where
@@ -68,7 +68,6 @@ where
     - For Zen API key authentication: `--zen-username <ZEN_USERNAME> --apikey <ZEN_API_KEY>` where `ZEN_USERNAME` and `ZEN_API_KEY` are the Zen API key credentials to access the decision runtime for IBM DI CMS (see [Authorizing HTTP requests by using the Zen API key](https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=administering-authorizing-http-requests-by-using-zen-api-key))
     - For basic authentication: `--basic-username <BASIC_USERNAME> --basic-password <BASIC_PASSWORD>` where `BASIC_USERNAME` and `BASIC_PASSWORD` are the basic authentication credentials to connect to the decision runtime for IBM DI CMS.
 - `RUNTIME_BASE_URL` is the base URL of the decision runtime REST API. For Decision Intelligence, its pattern is: `https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1` where TENANT_NAME is the name of the tenant.
-- `TRANSPORT` (optional) is the transport protocol, either `stdio` (default) or `http`.
 - `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `development`).
 - `DECISION_SERVICE_IDS` (optional) If defined, comma-separated list of decision service ids to be exposed as tools
 - `DECISION_SERVICE_POLL_INTERVAL` (optional) is the interval in seconds for polling decision services (default: `30`, minimum: `1`)
@@ -88,7 +87,6 @@ The following environment variables can be used in addition to the command line 
 | --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `development`)                          |
 | --debug                | DEBUG                | When the value is `true`, the debug messages are written to the `stderr` of the MCP server                   |
 | --decision-service-poll-interval | DECISION_SERVICE_POLL_INTERVAL | (Optional) Interval in seconds for polling decision services (default: `30`, minimum: `1`)               |
-| --transport            | TRANSPORT            | (Optional) Transport protocol: `stdio` (default) or `http`                                                     |
 | --url                  | URL                  | Base URL of the decision runtime </br>                                                                       |
 
 <a id="ai_applications"></a>
@@ -323,7 +321,7 @@ flowchart LR
     github["di-mcp-server github repository"] -- publish --> registry
     registry["NPM registry"] -- npx -y di-mcp-server--> server
 
-    subgraph MCP Host 
+    subgraph MCP Host
         client["MCP Client"] <-- MCP/STDIO --> server("DI MCP Server")
     end
 
@@ -332,9 +330,6 @@ flowchart LR
     subgraph id["Decision Intelligence<br>or Decision Intelligence Client Managed Software"]
         runtime
     end
-
-
-    client <-- MCP/HTTP --> server2("DI MCP Server") -- HTTPS --> runtime
 
 ```
 

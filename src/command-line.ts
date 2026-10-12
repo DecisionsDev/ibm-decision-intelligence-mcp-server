@@ -22,9 +22,7 @@ import {Credentials} from "./credentials.js";
 
 export class Configuration {
     static readonly STDIO = "stdio";
-    static readonly HTTP = "http";
 
-    static readonly TRANSPORTS: string[] = [Configuration.STDIO, Configuration.HTTP];
     // Public contract (CLI/env/docs) is in seconds
     private static readonly MIN_POLL_INTERVAL_S = 1;
     private static readonly DEFAULT_POLL_INTERVAL_S = 600;
@@ -34,7 +32,7 @@ export class Configuration {
 
     constructor(
         public credentials: Credentials,
-        public transport: StdioServerTransport | undefined,
+        public transport: StdioServerTransport,
         public url: string,
         public version: string,
         public debugEnabled: boolean,
@@ -44,10 +42,6 @@ export class Configuration {
         public pollIntervalMs: number = Configuration.defaultPollIntervalMs(),
         public mcpGroups: string[] | undefined = undefined
     ) {
-    }
-
-    static defaultTransport(): string {
-        return Configuration.STDIO;
     }
 
     static defaultDeploymentSpaces(): string[] {
@@ -90,14 +84,6 @@ export class Configuration {
         }
         // Return milliseconds for internal consumption
         return parsedIntervalSeconds * Configuration.MS_IN_ONE_SECOND;
-    }
-
-    isStdioTransport(): boolean {
-        return this.transport !== undefined;
-    }
-
-    isHttpTransport(): boolean {
-        return this.transport === undefined;
     }
 
     isDiApiKeyAuthentication(): boolean {
@@ -148,7 +134,6 @@ export class Configuration {
 export const ENV_VARIABLES = {
     DEBUG: 'DEBUG',
     URL: 'URL',
-    TRANSPORT: 'TRANSPORT',
     AUTHENTICATION_MODE: 'AUTHENTICATION_MODE',
     DI_APIKEY: 'DI_APIKEY',
     ZEN_APIKEY: 'ZEN_APIKEY',
@@ -185,21 +170,6 @@ function validateUrl(url: string | undefined) : string {
     } catch {
         throw new Error(`Invalid URL format: '${url}'`);
     }
-}
-
-function validateTransport(transport: string | undefined) :StdioServerTransport | undefined {
-    debug("TRANSPORT=" + transport);
-    if (transport === undefined) {
-        const defaultTransport = Configuration.defaultTransport();
-        debug(`The transport protocol is not defined. Using '${defaultTransport}'`);
-        transport = defaultTransport;
-    }
-    const normalizedTransport = transport.toLowerCase();
-    const transports = Configuration.TRANSPORTS.map(s => s.toLowerCase());
-    if (!transports.includes(normalizedTransport)) {
-        throw new Error(`Invalid transport protocol: '${transport}'. Must be one of: '${transports.join('\', \'')}'`);
-    }
-    return Configuration.STDIO === normalizedTransport ?  new StdioServerTransport() : undefined;
 }
 
 function validateDeploymentSpaces(parseDeploymentSpaceOption: string | undefined): string[] {
@@ -294,7 +264,6 @@ function createCommanderProgram(version: string): Command {
         .option('--zen-username <string>', "Username for the Zen API key authentication")
         .option('--basic-username <string>', "Username for the basic authentication")
         .option('--basic-password <string>', "Password for the basic authentication")
-        .option('--transport <transport>', "Transport mode: 'stdio' or 'http'")
         .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
         .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
         .option('--mcp-groups <list>', 'If defined, only decision services in the specificied mcp groups will be exposed as tools')
@@ -311,7 +280,7 @@ export function createConfiguration(version: string, cliArguments?: readonly str
 
     // Validate all options
     const credentials = Credentials.validateCredentials(options);
-    const transport = validateTransport(resolveOption(options.transport, ENV_VARIABLES.TRANSPORT));
+    const transport = new StdioServerTransport();
     const url = validateUrl(resolveOption(options.url, ENV_VARIABLES.URL));
     const deploymentSpaces = validateDeploymentSpaces(resolveOption(options.deploymentSpaces, ENV_VARIABLES.DEPLOYMENT_SPACES));
     const decisionServiceIds = parseDecisionServiceIds(resolveOption(options.decisionServiceIds, ENV_VARIABLES.DECISION_SERVICE_IDS));
