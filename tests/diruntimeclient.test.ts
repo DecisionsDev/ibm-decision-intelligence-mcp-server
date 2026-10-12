@@ -19,6 +19,7 @@ import nock from 'nock';
 import { default as loanValidationOpenapi } from '../tests/loanvalidation-openapi.json';
 import {Credentials} from "../src/credentials.js";
 import {Configuration} from "../src/command-line.js";
+import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 
 const metadata =  [{
         "decisionServiceId": {
@@ -64,11 +65,11 @@ const apikey = 'apiKey';
 const version = '1.2.3';
 const username = 'username';
 const encodedUsernameApiKey= Buffer.from(`${username}:${apikey}`).toString('base64');
-const diApiKeyConfiguration = new Configuration(Credentials.createDiApiKeyCredentials(apikey), undefined, url, version, false, undefined);
-const zenApiKeyConfiguration = new Configuration(Credentials.createZenApiKeyCredentials(username, apikey), undefined, url, version, false, undefined);
+const diApiKeyConfiguration = new Configuration(Credentials.createDiApiKeyCredentials(apikey), new StdioServerTransport(), url, version, false, undefined);
+const zenApiKeyConfiguration = new Configuration(Credentials.createZenApiKeyCredentials(username, apikey), new StdioServerTransport(), url, version, false, undefined);
 const password = 'password';
 const encodedUsernamePassword= Buffer.from(`${username}:${password}`).toString('base64');
-const basicAuthConfiguration = new Configuration(Credentials.createBasicAuthCredentials(username, password), undefined, url, version, false, undefined);
+const basicAuthConfiguration = new Configuration(Credentials.createBasicAuthCredentials(username, password), new StdioServerTransport(), url, version, false, undefined);
 const decisionId = 'decisionId';
 const operationId = 'operationId';
 const executionResponse = { answer: 42 };
