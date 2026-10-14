@@ -216,45 +216,20 @@ For more information, see [_Installing MCP servers_](https://docs.cursor.com/en/
 <a id="bob_streamable_http"></a>
 ### Integrating decision services into IBM Bob over Streamable HTTP
 
-The MCP server supports only the STDIO transport. To connect an MCP client over the Streamable HTTP transport, such as IBM Bob, run the MCP server behind a gateway that bridges the Streamable HTTP transport to the STDIO transport. Several gateways are available. The following example uses [Supergateway](https://github.com/supercorp-ai/supergateway), which starts the MCP server as a child process and bridges the Streamable HTTP requests of the client to the STDIO of the MCP server.
+The MCP server supports only the STDIO transport. To connect an MCP client that uses the Streamable HTTP transport, such as IBM Bob, you can run the MCP server behind a gateway that bridges Streamable HTTP to STDIO. Several open source projects provide this bridge. The following example uses [Supergateway](https://github.com/supercorp-ai/supergateway), which starts the MCP server as a child process.
 
-```mermaid
-flowchart LR
-   bob("IBM Bob") -- "MCP / Streamable HTTP" --> gateway("Supergateway")
-   gateway -- "MCP / STDIO" --> server("DI MCP Server")
-   server -- HTTPS --> runtime("Decision Runtime")
-```
+1. Start Supergateway:
 
-1. Start Supergateway.
-
-   ```bash
+```bash
    npx -y supergateway@latest \
      --stdio "npx -y di-mcp-server --di-apikey <APIKEY> --url <DI_RUNTIME_URL>" \
      --outputTransport streamableHttp \
-     --host 127.0.0.1 \
      --port 8000
-   ```
+```
 
-   where
-   - `<DI_RUNTIME_URL>` is the base URL of the decision runtime REST API (see `RUNTIME_BASE_URL` in the [command line syntax](#command-line-syntax)).
-   - `--stdio` is the command that Supergateway runs to start the MCP server. All the options of the [command line syntax](#command-line-syntax) are supported. Do not start the MCP server separately: Supergateway starts it.
-   - `--outputTransport streamableHttp` exposes the MCP server over the Streamable HTTP transport, at `http://localhost:8000/mcp`.
-   - `--host 127.0.0.1` restricts the gateway to local connections.
+2. Add the MCP server to the MCP configuration of IBM Bob:
 
-   The MCP server inherits the environment variables of Supergateway. You can therefore use the [environment variables](#command-line-syntax) of the MCP server instead of passing the credentials on the command line:
-
-   ```bash
-   DI_APIKEY=<APIKEY> URL=<DI_RUNTIME_URL> \
-   npx -y supergateway@latest \
-     --stdio "npx -y di-mcp-server" \
-     --outputTransport streamableHttp \
-     --host 127.0.0.1 \
-     --port 8000
-   ```
-
-2. Add the MCP server to the MCP configuration of IBM Bob.
-
-   ```json
+```json
    {
        "mcpServers": {
            "di-mcp-server": {
@@ -263,31 +238,9 @@ flowchart LR
            }
        }
    }
-   ```
+```
 
-#### Securing the connection
-
-The example above uses plain HTTP and is intended for local use, where IBM Bob and Supergateway run on the same machine. When the gateway is reachable from other machines, secure the connection as follows.
-
-- **HTTPS**: Supergateway serves plain HTTP only. Put a TLS-terminating reverse proxy in front of it. The proxy accepts the HTTPS connections of IBM Bob and forwards them as plain HTTP to Supergateway on the loopback interface. Then set the URL in the configuration of IBM Bob to `https://<GATEWAY_HOSTNAME>/mcp`.
-
-- **Client authentication**: by default, anyone who can reach the gateway can call the decision services with your decision runtime credentials. Use the `--apiKey <GATEWAY_API_KEY>` option or the `SUPERGATEWAY_API_KEY` environment variable of Supergateway to require a key. This key is different from the Decision Intelligence API key: it only grants access to the gateway. Add it to the configuration of IBM Bob:
-
-   ```json
-   {
-       "mcpServers": {
-           "di-mcp-server": {
-               "type": "streamable-http",
-               "url": "https://<GATEWAY_HOSTNAME>/mcp",
-               "headers": {
-                   "Authorization": "Bearer <GATEWAY_API_KEY>"
-               }
-           }
-       }
-   }
-   ```
-
-- **Self-signed certificate of the decision runtime**: if the decision runtime of IBM Decision Intelligence uses a self-signed certificate, set `NODE_EXTRA_CA_CERTS=<PATH_TO_CA_CERTIFICATE>` when you start Supergateway, so that the MCP server trusts this certificate. For a local test only, you can set `NODE_TLS_REJECT_UNAUTHORIZED=0` instead. This variable disables the certificate verification for all the HTTPS connections of the MCP server: never use it in production.
+> **Note:** This example uses plain HTTP and is intended for local testing only. Refer to the documentation of the gateway you choose to secure the connection (HTTPS, client authentication) before exposing it to other machines.
 
 ## Using custom tool names
 
