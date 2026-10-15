@@ -17,6 +17,7 @@
 import { getDecisionServiceIds } from '../src/diruntimeclient.js';
 import { Configuration } from '../src/command-line.js';
 import { Credentials } from '../src/credentials.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 const url = 'https://example.com';
 const dummy_apikey = 'testApiKey';
@@ -25,7 +26,7 @@ const version = '1.0.0';
 function createConfiguration(mcpGroups?: string[]): Configuration {
     return new Configuration(
         Credentials.createDiApiKeyCredentials(dummy_apikey),
-        undefined,
+        new StdioServerTransport(),
         url,
         version,
         false,
