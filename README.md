@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
    client("AI Assistant <br><br>(Claude, Watsonx Orchestrate, etc.)") -- MCP --> server("Decision Intelligence<br>MCP Server")
-   server -- HTTPS --> runtime("IBM Decision Intelligence CMS <br><br>Decision Runtime")
+   server -- HTTPS --> runtime("IBM Decision Intelligence<br> CMS <br><br>Decision Runtime")
 ```
 
 This Model Context Protocol (MCP) server empowers AI assistants by accessing decisions from [IBM Decision Intelligence Client Managed Software](https://www.ibm.com/products/decision-intelligence-client-managed-software).
