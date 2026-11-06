@@ -1,14 +1,16 @@
-# MCP server for IBM Decision Intelligence and IBM Decision Intelligence Client Managed Software
+# MCP server for IBM Decision Intelligence Client Managed Software
 
 [![Build and test](https://github.com/DecisionsDev/di-mcp-server/actions/workflows/build.yml/badge.svg)](https://github.com/DecisionsDev/di-mcp-server/actions/workflows/build.yml) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![npm Version](https://badge.fury.io/js/di-mcp-server.svg)](https://www.npmjs.com/package/di-mcp-server) ![npm Downloads](https://img.shields.io/npm/dw/di-mcp-server)
 
 ```mermaid
 flowchart LR
    client("AI Assistant <br><br>(Claude, Watsonx Orchestrate, etc.)") -- MCP --> server("Decision Intelligence<br>MCP Server")
-   server -- HTTPS --> runtime("IBM Decision Intelligence <br>or IBM DI CMS <br><br>Decision Runtime")
+   server -- HTTPS --> runtime("Decision Intelligence<br> CMS <br><br>Decision Runtime")
 ```
 
-This Model Context Protocol (MCP) server empowers AI assistants by accessing decisions from [IBM Decision Intelligence](https://www.ibm.com/products/decision-intelligence) or [IBM Decision Intelligence Client Managed Software](https://www.ibm.com/products/decision-intelligence-client-managed-software).
+This Model Context Protocol (MCP) server empowers AI assistants by accessing decisions from [IBM Decision Intelligence Client Managed Software](https://www.ibm.com/products/decision-intelligence-client-managed-software).
+
+> **Note:** IBM Decision Intelligence (SaaS offerings) comes with an embedded MCP server for the decision runtime. For more information about configuring and using the decision runtime MCP server, see [Interacting with Decision Intelligence through MCP servers](https://www.ibm.com/docs/en/decision-intelligence?topic=interacting-decision-intelligence-through-mcp-servers) in the product documentation.
 
 The MCP server is available as an npm package in the free npm registry at https://www.npmjs.com/package/di-mcp-server.
 
@@ -29,16 +31,7 @@ To develop your own MCP server or contribute to the development, see [Developing
 
 You can run the MCP server with npx to expose each operation of the last deployed version of a decision service as an MCP tool.
 
-### For IBM Decision Intelligence
-
-Create the MCP server by using decisions that are deployed in Decision Intelligence:
-```bash
-npx -y di-mcp-server --di-apikey <YOUR_DI_API_KEY> --url https://mytenant.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1
-```
-
-### For IBM Decision Intelligence Client Managed Software (IBM DI CMS)
-
-#### Zen API key authentication
+### With Zen API key authentication
 
 Create the MCP server by using decisions that are deployed in IBM DI CMS that uses the Zen API key authentication:
 
@@ -46,7 +39,7 @@ Create the MCP server by using decisions that are deployed in IBM DI CMS that us
 npx -y di-mcp-server --authentication-mode zenapikey --zen-username <YOUR_ZEN_USERNAME> --zen-apikey <YOUR_ZEN_API_KEY> --url https://myads-hostname/ads/runtime/api/v1
 ```
 
-#### Basic authentication
+### With Basic authentication
 
 Create the MCP server by using decisions that are deployed in IBM DI CMS that uses the basic authentication:
 
@@ -62,12 +55,11 @@ npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS>
 ```
 
 where
-- `AUTHENTICATION_MODE` (optional) is the authentication mode to access the decision runtime; either `diapikey` (default), `zenapikey`, or `basic` respectively for authenticating with the Decision Intelligence API key, Zen API key, or basic credentials (i.e. username and password)
+- `AUTHENTICATION_MODE` (optional) is the authentication mode to access the decision runtime; either `zenapikey`, or `basic` respectively for authenticating with Zen API key, or basic credentials (i.e. username and password)
 - `CREDENTIALS` is one of the following options, depending on the chosen authentication mode:
-    - For Decision Intelligence API key authentication: `--di-apikey <DI_API_KEY>` where `DI_API_KEY` is the API key to access the decision runtime for Decision Intelligence.
     - For Zen API key authentication: `--zen-username <ZEN_USERNAME> --apikey <ZEN_API_KEY>` where `ZEN_USERNAME` and `ZEN_API_KEY` are the Zen API key credentials to access the decision runtime for IBM DI CMS (see [Authorizing HTTP requests by using the Zen API key](https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=administering-authorizing-http-requests-by-using-zen-api-key))
     - For basic authentication: `--basic-username <BASIC_USERNAME> --basic-password <BASIC_PASSWORD>` where `BASIC_USERNAME` and `BASIC_PASSWORD` are the basic authentication credentials to connect to the decision runtime for IBM DI CMS.
-- `RUNTIME_BASE_URL` is the base URL of the decision runtime REST API. For Decision Intelligence, its pattern is: `https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1` where TENANT_NAME is the name of the tenant.
+- `RUNTIME_BASE_URL` is the base URL of the decision runtime REST API. 
 - `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `development`).
 - `DECISION_SERVICE_IDS` (optional) If defined, comma-separated list of decision service ids to be exposed as tools
 - `DECISION_SERVICE_POLL_INTERVAL` (optional) is the interval in seconds for polling decision services (default: `30`, minimum: `1`)
@@ -76,8 +68,7 @@ The following environment variables can be used in addition to the command line 
 
 | CLI Option             | Environment Variable | Description                                                                                                  |
 |------------------------|----------------------|--------------------------------------------------------------------------------------------------------------|
-| --authentication-mode  | AUTHENTICATION_MODE  | (Optional) Authentication mode to connect to the decision runtime: `diapikey` (default), `zenapikey` or `basic` |
-| --di-apikey            | DI_APIKEY            | Decision Intelligence API key                                                                                |
+| --authentication-mode  | AUTHENTICATION_MODE  | (Optional) Authentication mode to connect to the decision runtime: `zenapikey` or `basic` |
 | --zen-username         | ZEN_USERNAME         | Zen username                                                                                                 |
 | --zen-apikey           | ZEN_APIKEY           | Zen API key                                                                                                  |
 | --basic-username       | BASIC_USERNAME       | Basic authentication username                                                                                |
@@ -125,10 +116,10 @@ You can integrate decision services into Claude Desktop by adding the MCP server
                   "args": [
                       "-y",
                       "di-mcp-server",
-                      "--di-apikey",
+                      "--zen-apikey",
                       "<APIKEY>",
                       "--url",
-                      "https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1"
+                      "https://<DI_CMS_CLUSTER_URL>/ads/runtime/api/v1"
                   ]
               }
           }
@@ -145,8 +136,8 @@ You can integrate decision services into Claude Desktop by adding the MCP server
                   "command": "npx",
                   "args": ["-y", "di-mcp-server"],
                   "env": {
-                      "DI_APIKEY": "<APIKEY>",
-                      "URL": "https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1"
+                      "ZEN_APIKEY": "<APIKEY>",
+                      "URL": "https://<DI_CMS_CLUSTER_URL>/ads/runtime/api/v1"
                   }
               }
           }
@@ -183,10 +174,10 @@ You can integrate decision services into Cursor by adding the MCP server.
                   "args": [
                       "-y",
                       "di-mcp-server",
-                      "--di-apikey",
+                      "--zen-apikey",
                       "<APIKEY>",
                       "--url",
-                      "https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1"
+                      "https://<DI_CMS_CLUSTER_URL>/ads/runtime/api/v1"
                   ]
               }
           }
@@ -202,8 +193,8 @@ You can integrate decision services into Cursor by adding the MCP server.
                   "command": "npx",
                   "args": ["-y", "di-mcp-server"],
                   "env": {
-                      "DI_APIKEY": "<APIKEY>",
-                      "URL": "https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1"
+                      "ZEN_APIKEY": "<APIKEY>",
+                      "URL": "https://<DI_CMS_CLUSTER_URL>/ads/runtime/api/v1"
                   }
               }
           }
@@ -214,6 +205,7 @@ You can integrate decision services into Cursor by adding the MCP server.
 For more information, see [_Installing MCP servers_](https://docs.cursor.com/en/context/mcp#installing-mcp-servers) in the Cursor documentation.
 
 <a id="bob_streamable_http"></a>
+
 ### Integrating decision services into IBM Bob over Streamable HTTP
 
 The MCP server supports only the STDIO transport. To connect an MCP client that uses the Streamable HTTP transport, such as IBM Bob, you can run the MCP server behind a gateway that bridges Streamable HTTP to STDIO. Several open source projects provide this bridge. The following example uses [Supergateway](https://github.com/supercorp-ai/supergateway), which starts the MCP server as a child process.
@@ -222,7 +214,7 @@ The MCP server supports only the STDIO transport. To connect an MCP client that 
 
 ```bash
    npx -y supergateway@latest \
-     --stdio "npx -y di-mcp-server --di-apikey <APIKEY> --url <DI_RUNTIME_URL>" \
+     --stdio "npx -y di-mcp-server --zen-apikey <APIKEY> --url <DI_RUNTIME_URL>" \
      --outputTransport streamableHttp \
      --port 8000
 ```
@@ -298,10 +290,10 @@ The decision service ID is defined in the `decisionServiceId` metadata of the de
             "args": [
                 "-y",
                 "di-mcp-server",
-                "--di-apikey",
+                "--zen-apikey",
                 "<APIKEY>",
                 "--url",
-                "https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1",
+                "https://<DI_CMS_CLUSTER_URL>/ads/runtime/api/v1",
                 "--decision-service-ids",
                 "loan-approval,credit-scoring"
             ]
@@ -326,10 +318,10 @@ The MCP groups are defined in the `mcpGroups` metadata of the deployed decision 
             "args": [
                 "-y",
                 "di-mcp-server",
-                "--di-apikey",
+                "--zen-apikey",
                 "<APIKEY>",
                 "--url",
-                "https://<TENANT_NAME>.decision-prod-us-south.decision.saas.ibm.com/ads/runtime/api/v1",
+                "https://<DI_CMS_CLUSTER_URL>/ads/runtime/api/v1",
                 "--mcp-groups",
                 "finance,risk-management"
             ]
@@ -356,7 +348,7 @@ flowchart LR
 
     server -- HTTPS --> runtime("Decision Runtime")
 
-    subgraph id["Decision Intelligence<br>or Decision Intelligence Client Managed Software"]
+    subgraph id["Decision Intelligence Client Managed Software"]
         runtime
     end
 
