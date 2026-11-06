@@ -10,7 +10,7 @@ flowchart LR
 
 This Model Context Protocol (MCP) server empowers AI assistants by accessing decisions from [IBM Decision Intelligence Client Managed Software](https://www.ibm.com/products/decision-intelligence-client-managed-software).
 
-> **Note:** For IBM Decision Intelligence (SaaS offering), an MCP Server is provided and does not require any installation, see the [decision runtime MCP server documentation](https://www.ibm.com/docs/en/decision-intelligence?topic=servers-using-decision-runtime-mcp-server).
+> **Note:** IBM Decision Intelligence (SaaS offerings) comes with an embedded MCP server for the decision runtime. For more information about configuring and using the decision runtime MCP server, see [Interacting with Decision Intelligence through MCP servers](https://www.ibm.com/docs/en/decision-intelligence?topic=interacting-decision-intelligence-through-mcp-servers) in the product documentation.
 
 The MCP server is available as an npm package in the free npm registry at https://www.npmjs.com/package/di-mcp-server.
 
