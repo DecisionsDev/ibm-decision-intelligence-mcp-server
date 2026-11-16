@@ -65,7 +65,6 @@ const apikey = 'apiKey';
 const version = '1.2.3';
 const username = 'username';
 const encodedUsernameApiKey= Buffer.from(`${username}:${apikey}`).toString('base64');
-const diApiKeyConfiguration = new Configuration(Credentials.createDiApiKeyCredentials(apikey), new StdioServerTransport(), url, version, false, undefined);
 const zenApiKeyConfiguration = new Configuration(Credentials.createZenApiKeyCredentials(username, apikey), new StdioServerTransport(), url, version, false, undefined);
 const password = 'password';
 const encodedUsernamePassword= Buffer.from(`${username}:${password}`).toString('base64');
@@ -97,10 +96,10 @@ nock(url)
     .get('/deploymentSpaces/nonexistent/metadata?names=decisionServiceId,deploymentTime,mcpGroups')
     .reply(404)
     .get('/selectors/lastDeployedDecisionService/deploymentSpaces/production/openapi?decisionServiceId=ID1&outputFormat=JSON/openapi')
-    .matchHeader('apikey', apikey)
+    .matchHeader('authorization', `ZenApiKey ${encodedUsernameApiKey}`)
     .reply(200, loanValidationOpenapi)
     .post('/selectors/lastDeployedDecisionService/deploymentSpaces/foo.bar/operations/execute/execute?decisionServiceId=ID1')
-    .matchHeader('apikey', apikey)
+    .matchHeader('authorization', `ZenApiKey ${encodedUsernameApiKey}`)
     .reply(200, { result: 'default-success' })
     .get('/deploymentSpaces/staging/decisions/decision123/openapi')
     .matchHeader('authorization', `ZenApiKey ${encodedUsernameApiKey}`)
@@ -115,7 +114,7 @@ nock(url)
     .reply(200, decisionMetadata);
 
 test('getDecisionServiceIds', () => {
-    expect(getDecisionServiceIds(metadata, diApiKeyConfiguration)).toEqual(["ID1", "ID2"]);
+    expect(getDecisionServiceIds(metadata, zenApiKeyConfiguration)).toEqual(["ID1", "ID2"]);
 });
 
 test(`getMetadata with 'test' deployment space`, async () => {
@@ -131,7 +130,7 @@ test('getMetadata with non existent deploymentSpace', async () => {
 });
 
 test(`getDecisionServiceOpenAPI with 'production' deploymentSpace`, async() => {
-    return getDecisionServiceOpenAPI(diApiKeyConfiguration, 'production', 'ID1')
+    return getDecisionServiceOpenAPI(zenApiKeyConfiguration, 'production', 'ID1')
         .then(data => {
             expect(data).toEqual(loanValidationOpenapi);
         })
@@ -139,7 +138,7 @@ test(`getDecisionServiceOpenAPI with 'production' deploymentSpace`, async() => {
 
 test(`executeLastDeployedDecisionService with 'foo.bar' deploymentSpace`, async() => {
     const input = { data: 'test' };
-    return executeLastDeployedDecisionService(diApiKeyConfiguration, 'foo.bar', 'ID1', 'execute', input)
+    return executeLastDeployedDecisionService(zenApiKeyConfiguration, 'foo.bar', 'ID1', 'execute', input)
         .then(data => {
             expect(JSON.parse(data)).toEqual({ result: 'default-success' });
         })

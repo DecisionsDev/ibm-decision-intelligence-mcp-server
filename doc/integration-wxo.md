@@ -18,7 +18,7 @@ You can use the connection setting to specity the API key and URL environment va
 
 4. In the **Configure draft connection** panel:
    - Select **Key Value Pair** as **Authentication Type**.
-   - Enter the **Key** and **Value** fields to define the `DI_APIKEY` environment variable.
+   - Enter the **Key** and **Value** fields to define the `ZEN_USERNAME` and `ZEN_APIKEY` environment variables.
    - Click **Add key value pair**.
 
    [![Thumbnail](./wxO-connection-04-thumbnail.png)](doc/wxO-connection-04.png)
@@ -37,7 +37,7 @@ You can use the connection setting to specity the API key and URL environment va
 
 8. In the **Add MCP Server** wizard:
    - Select the display name corresponding to the connection you just configured.
-   - Enter the `npx` command **WITHOUT** the `--di-apikey` and `--url` arguments.
+   - Enter the `npx` command **WITHOUT** the `--zen-username`, `--zen-apikey` and `--url` arguments.
    - Click **Connect**, and then click  **Done**.
 
     [![Thumbnail](./wxO-connection-08-thumbnail.png)](doc/wxO-connection-08.png)

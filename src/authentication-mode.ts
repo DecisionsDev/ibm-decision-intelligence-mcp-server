@@ -15,7 +15,6 @@
  */
 
 export enum AuthenticationMode {
-    DI_API_KEY = "DiApiKey",
     ZEN_API_KEY = "ZenApiKey",
     BASIC = "Basic",
 }
@@ -28,5 +27,5 @@ export function parseAuthenticationMode(runtime: string): AuthenticationMode | u
 }
 
 export function defaultAuthenticationMode(): AuthenticationMode {
-    return AuthenticationMode.DI_API_KEY;
+    return AuthenticationMode.ZEN_API_KEY;
 }

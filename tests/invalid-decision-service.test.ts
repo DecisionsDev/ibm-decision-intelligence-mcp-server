@@ -99,7 +99,7 @@ describe('MCP server with invalid decision service ID', () => {
      * This simulates the scenario where the API returns an error response.
      */
     function createInvalidDecisionServiceEnvironment() {
-        const deploymentSpace = 'development';
+        const deploymentSpace = 'embedded';
         const invalidDecisionServiceId = '645005MK5R/BRA-DI-Test-Decision-Automation/Loan Approval-toto';
         const fakeStdin = new PassThrough();
         const fakeStdout = new PassThrough();
@@ -107,7 +107,7 @@ describe('MCP server with invalid decision service ID', () => {
         const clientTransport = new StreamClientTransport(fakeStdout, fakeStdin);
         
         const configuration = new Configuration(
-            Credentials.createDiApiKeyCredentials('dummy.api.key'),
+            Credentials.createZenApiKeyCredentials('dummy.user', 'dummy.api.key'),
             transport,
             'https://example.com',
             '1.2.3',

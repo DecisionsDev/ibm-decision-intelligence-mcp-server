@@ -45,7 +45,7 @@ export class Configuration {
     }
 
     static defaultDeploymentSpaces(): string[] {
-        return ['development'];
+        return ['embedded'];
     }
 
     /**
@@ -84,10 +84,6 @@ export class Configuration {
         }
         // Return milliseconds for internal consumption
         return parsedIntervalSeconds * Configuration.MS_IN_ONE_SECOND;
-    }
-
-    isDiApiKeyAuthentication(): boolean {
-        return this.credentials.authenticationMode === AuthenticationMode.DI_API_KEY;
     }
 
     isZenAPiKeyAuthentication(): boolean {
@@ -135,7 +131,6 @@ export const ENV_VARIABLES = {
     DEBUG: 'DEBUG',
     URL: 'URL',
     AUTHENTICATION_MODE: 'AUTHENTICATION_MODE',
-    DI_APIKEY: 'DI_APIKEY',
     ZEN_APIKEY: 'ZEN_APIKEY',
     ZEN_USERNAME: 'ZEN_USERNAME',
     BASIC_USERNAME: 'BASIC_USERNAME',
@@ -258,13 +253,12 @@ function createCommanderProgram(version: string): Command {
         .version(version)
         .option('--debug', 'Enable debug output')
         .option('--url <string>', "Base URL for the decision runtime API, required. Or set the 'URL' environment variable")
-        .option("--authentication-mode <authentication-mode>", "Authentication mode to access the target decision runtime: 'diapikey', 'zenapikey' or 'basic'. Default value is 'diapikey'")
-        .option('--di-apikey <string>', "API key for the Decision Intelligence API key authentication")
+        .option("--authentication-mode <authentication-mode>", "Authentication mode to access the target decision runtime: 'zenapikey' or 'basic'. Default value is 'zenapikey'")
         .option('--zen-apikey <string>', "API key for the Zen API key authentication")
         .option('--zen-username <string>', "Username for the Zen API key authentication")
         .option('--basic-username <string>', "Username for the basic authentication")
         .option('--basic-password <string>', "Password for the basic authentication")
-        .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'development')")
+        .option('--deployment-spaces <list>', "Comma-separated list of deployment spaces to scan (default: 'embedded')")
         .option('--decision-service-ids <list>', 'If defined, comma-separated list of decision service ids to be exposed as tools')
         .option('--mcp-groups <list>', 'If defined, only decision services in the specificied mcp groups will be exposed as tools')
         .option('--decision-service-poll-interval <seconds>', 'Interval in seconds for polling tool changes (default: 10min, minimum: 1s)');

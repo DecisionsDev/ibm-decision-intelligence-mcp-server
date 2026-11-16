@@ -31,7 +31,6 @@ const mockSetDebug = setDebug as jest.MockedFunction<typeof setDebug>;
 // Mock the DecisionRuntime enum and parseDecisionRuntime function
 jest.mock('../src/authentication-mode', () => ({
     AuthenticationMode: {
-        DI_API_KEY: 'DiApiKey',
         ZEN_API_KEY: 'ZenApiKey',
         BASIC: 'Basic'
     },
@@ -56,9 +55,6 @@ describe('CLI Configuration', () => {
         // Setup default mock implementations
         mockParseAuthenticationMode.mockImplementation((authenticationMode: string) => {
             const normalizedInput = authenticationMode.toLowerCase();
-            if (normalizedInput === 'DiApiKey'.toLowerCase()) {
-                return AuthenticationMode.DI_API_KEY;
-            }
             if (normalizedInput === 'ZenApiKey'.toLowerCase()) {
                 return AuthenticationMode.ZEN_API_KEY;
             }
@@ -69,7 +65,7 @@ describe('CLI Configuration', () => {
         });
 
         mockDefaultAuthenticationMode.mockImplementation(() => {
-            return AuthenticationMode.DI_API_KEY;
+            return AuthenticationMode.ZEN_API_KEY;
         });
     });
 
@@ -88,7 +84,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.url).toBe(url);
@@ -99,7 +96,8 @@ describe('CLI Configuration', () => {
             expect(() => {
                 createConfiguration(version, [
                     'node', 'cli.js',
-                    '--di-apikey', 'validkey123'
+                    '--zen-username', 'zenuser',
+                    '--zen-apikey', 'validkey123'
                 ]);
             }).toThrow('The decision runtime REST API URL is not defined');
         });
@@ -109,7 +107,8 @@ describe('CLI Configuration', () => {
                 createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', 'invalid-url',
-                    '--di-apikey', 'validkey123'
+                    '--zen-username', 'zenuser',
+                    '--zen-apikey', 'validkey123'
                 ]);
             }).toThrow('Invalid URL format: \'invalid-url\'');
         });
@@ -120,7 +119,8 @@ describe('CLI Configuration', () => {
 
             const config = createConfiguration(version, [
                 'node', 'cli.js',
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.url).toBe(urlFromEnv);
@@ -130,7 +130,8 @@ describe('CLI Configuration', () => {
             createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(mockDebug).toHaveBeenCalledWith('URL=https://api.example.com');
@@ -142,7 +143,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.transport).toBeInstanceOf(StdioServerTransport);
@@ -151,14 +153,6 @@ describe('CLI Configuration', () => {
 
     describe('validateDecisionRuntime', () => {
         test('should accept valid authentication modes', () => {
-            const diApiKeyConfig = createConfiguration(version, [
-                'node', 'cli.js',
-                '--url', url,
-                '--di-apikey', 'validkey123',
-                '--authentication-mode', 'DiApiKey'
-            ]);
-            expect(diApiKeyConfig.credentials.authenticationMode).toBe(AuthenticationMode.DI_API_KEY);
-
             const zenApiKeyConfig = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
@@ -178,14 +172,15 @@ describe('CLI Configuration', () => {
             expect(basiconfig.credentials.authenticationMode).toBe(AuthenticationMode.BASIC);
         });
 
-        test('should default to DI when not specified', () => {
+        test('should default to Zen API key when not specified', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
-            expect(config.credentials.authenticationMode).toBe(AuthenticationMode.DI_API_KEY);
+            expect(config.credentials.authenticationMode).toBe(AuthenticationMode.ZEN_API_KEY);
         });
 
         test('should throw error for invalid decision runtime', () => {
@@ -196,10 +191,11 @@ describe('CLI Configuration', () => {
                 createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--di-apikey', 'validkey123',
+                    '--zen-username', 'zenuser',
+                    '--zen-apikey', 'validkey123',
                     '--authentication-mode', invalid
                 ]);
-            }).toThrow(`Invalid authentication mode: '${invalid}'. Must be one of: 'diapikey', 'zenapikey', 'basic'`);
+            }).toThrow(`Invalid authentication mode: '${invalid}'. Must be one of: 'zenapikey', 'basic'`);
         });
 
         test('should read authentication mode from environment variable', () => {
@@ -219,23 +215,25 @@ describe('CLI Configuration', () => {
             createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--authentication-mode', 'DiApiKey'
+                '--zen-username', 'foobar',
+                '--zen-apikey', 'validkey123',
+                '--authentication-mode', 'ZenApiKey'
             ]);
 
-            expect(mockDebug).toHaveBeenCalledWith('AUTHENTICATION_MODE=DiApiKey');
+            expect(mockDebug).toHaveBeenCalledWith('AUTHENTICATION_MODE=ZenApiKey');
         });
 
         test('should call parseDecisionRuntime function', () => {
-            const diApiKey = 'DiApiKey';
+            const zenApiKey = 'ZenApiKey';
             createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--authentication-mode', diApiKey
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
+                '--authentication-mode', zenApiKey
             ]);
 
-            expect(mockParseAuthenticationMode).toHaveBeenCalledWith('DiApiKey');
+            expect(mockParseAuthenticationMode).toHaveBeenCalledWith('ZenApiKey');
         });
     });
 
@@ -247,84 +245,7 @@ describe('CLI Configuration', () => {
                     'node', 'cli.js',
                     '--url', url
                 ]);
-            }).toThrow('The DI API key must be defined');
-        });
-
-        describe('With DI API key', () => {
-            const apiKey = 'validkey123';
-            test('should accept valid API keys', () => {
-                const config = createConfiguration(version, [
-                    'node', 'cli.js',
-                    '--url', url,
-                    '--di-apikey', apiKey
-                ]);
-
-                expect(config).toMatchObject({
-                    credentials: {
-                        apikey: apiKey
-                    },
-                });
-            });
-
-            test('should throw error for undefined DI API key', () => {
-                expect(() => {
-                    createConfiguration(version, [
-                        'node', 'cli.js',
-                        '--url', url
-                    ]);
-                }).toThrow('The DI API key must be define');
-            });
-
-            test('should throw error for empty API key', () => {
-                expect(() => {
-                    createConfiguration(version, [
-                        'node', 'cli.js',
-                        '--url', url,
-                        '--di-apikey', '   '
-                    ]);
-                }).toThrow('The DI API key cannot be empty');
-            });
-
-            test('should use API key from environment variable', () => {
-                const envApiKey = 'env-api-key-123';
-                process.env.DI_APIKEY = envApiKey;
-
-                const config = createConfiguration(version, [
-                    'node', 'cli.js',
-                    '--url', url
-                ]);
-
-                expect(config).toMatchObject({
-                    credentials: {
-                        apikey: envApiKey
-                    },
-                });
-            });
-
-            test('should read authentication mode from environment variable', () => {
-                process.env.AUTHENTICATION_MODE = 'DIAPIKEY'
-                const config = createConfiguration(version, [
-                    'node', 'cli.js',
-                    '--url', url,
-                    '--di-apikey', apiKey
-                ]);
-
-                expect(config).toMatchObject({
-                    credentials: {
-                        apikey: apiKey
-                    },
-                });
-            });
-
-            test('should call debug function with DI API key', () => {
-                createConfiguration(version, [
-                    'node', 'cli.js',
-                    '--url', url,
-                    '--di-apikey', apiKey
-                ]);
-
-                expect(mockDebug).toHaveBeenCalledWith('DI API Key(API key: ***)');
-            });
+            }).toThrow('The Zen API key must be defined');
         });
 
         describe('With Zen API key', () => {
@@ -603,26 +524,28 @@ describe('CLI Configuration', () => {
 
         test('should create configuration with defaults', () => {
             process.env.URL = url;
-            process.env.DI_APIKEY = apiKey;
+            process.env.ZEN_USERNAME = 'zenuser';
+            process.env.ZEN_APIKEY = apiKey;
 
             const config = createConfiguration(version, ['node', 'cli.js']);
 
             expect(config).toMatchObject({
                 credentials: {
                     apikey: apiKey,
-                    authenticationMode: AuthenticationMode.DI_API_KEY
+                    authenticationMode: AuthenticationMode.ZEN_API_KEY
                 },
                 transport: expect.any(StdioServerTransport),
                 url: url,
                 version: version,
                 debugEnabled: originalEnv.DEBUG === 'true',
-                deploymentSpaces: ['development']
+                deploymentSpaces: ['embedded']
             });
         });
 
         test('should handle debug flag from CLI argument', () => {
             process.env.URL = url;
-            process.env.DI_APIKEY = apiKey;
+            process.env.ZEN_USERNAME = 'zenuser';
+            process.env.ZEN_APIKEY = apiKey;
 
             const config = createConfiguration(version, ['node', 'cli.js', '--debug']);
 
@@ -633,7 +556,8 @@ describe('CLI Configuration', () => {
         test('should handle debug flag from environment variable', () => {
             process.env.DEBUG = 'true';
             process.env.URL = url;
-            process.env.DI_APIKEY = apiKey;
+            process.env.ZEN_USERNAME = 'zenuser';
+            process.env.ZEN_APIKEY = apiKey;
 
             const config = createConfiguration(version, ['node', 'cli.js']);
 
@@ -676,19 +600,6 @@ describe('CLI Configuration', () => {
 
         describe(`should set helper properties correctly for`, ()=> {
 
-            test(`'DiApiKey' authentication mod`, () => {
-                process.env.URL = url;
-                process.env.DI_APIKEY = apiKey;
-
-                const config = createConfiguration(version, [
-                    'node', 'cli.js'
-                ]);
-
-                expect(config.isDiApiKeyAuthentication()).toBe(true);
-                expect(config.isZenAPiKeyAuthentication()).toBe(false);
-                expect(config.isBasicAuthentication()).toBe(false);
-            });
-
             test(`'ZenApiKey' authentication mode`, () => {
                 process.env.URL = url;
                 process.env.ZEN_APIKEY = apiKey;
@@ -699,7 +610,6 @@ describe('CLI Configuration', () => {
                     '--authentication-mode', 'ZenApiKey'
                 ]);
 
-                expect(config.isDiApiKeyAuthentication()).toBe(false);
                 expect(config.isZenAPiKeyAuthentication()).toBe(true);
                 expect(config.isBasicAuthentication()).toBe(false);
             });
@@ -714,7 +624,6 @@ describe('CLI Configuration', () => {
                     '--authentication-mode', 'Basic'
                 ]);
 
-                expect(config.isDiApiKeyAuthentication()).toBe(false);
                 expect(config.isZenAPiKeyAuthentication()).toBe(false);
                 expect(config.isBasicAuthentication()).toBe(true);
             });
@@ -726,7 +635,8 @@ describe('CLI Configuration', () => {
             try {
                 process.argv = [originalArgv[0], originalArgv[1]];
                 process.env.URL = url;
-                process.env.DI_APIKEY = apiKey;
+                process.env.ZEN_USERNAME = 'zenuser';
+                process.env.ZEN_APIKEY = apiKey;
 
                 // Should use process.argv when no arguments provided
                 const config = createConfiguration(version);
@@ -739,7 +649,7 @@ describe('CLI Configuration', () => {
                     },
                     transport: expect.any(StdioServerTransport),
                     url: url,
-                    deploymentSpaces: ['development']
+                    deploymentSpaces: ['embedded']
                 });
             } finally {
                 process.argv = originalArgv;
@@ -748,14 +658,15 @@ describe('CLI Configuration', () => {
     });
 
     describe('validateDeploymentSpaces', () => {
-        const deploymentSpaces = ['development', 'production', 'test'];
+        const deploymentSpaces = ['embedded', 'production', 'test'];
         const encodedDeploymentSpaces = deploymentSpaces.map(ds => encodeURIComponent(ds));
         const encodedDefaultDeploymentSpaces = Configuration.defaultDeploymentSpaces().map(ds => encodeURIComponent(ds));
         test('should accept valid deployment spaces', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--deployment-spaces', deploymentSpaces.join(',')
             ]);
 
@@ -767,7 +678,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--deployment-spaces', `  ${deploymentSpace}        `
             ]);
 
@@ -778,8 +690,9 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
-                '--deployment-spaces', '     development         ,  production     ,  test  '
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
+                '--deployment-spaces', '     embedded         ,  production     ,  test  '
             ]);
 
             expect(config.deploymentSpaces).toEqual(encodedDeploymentSpaces);
@@ -789,7 +702,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--deployment-spaces', '     ,     ,       ,     '
             ]);
 
@@ -800,7 +714,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.deploymentSpaces).toEqual(encodedDefaultDeploymentSpaces);
@@ -825,8 +740,9 @@ describe('CLI Configuration', () => {
                     createConfiguration(version, [
                         'node', 'cli.js',
                         '--url', url,
-                        '--di-apikey', 'validkey123',
-                        '--deployment-spaces', `development,${invalidSpace}`
+                        '--zen-username', 'zenuser',
+                        '--zen-apikey', 'validkey123',
+                        '--deployment-spaces', `embedded,${invalidSpace}`
                     ]);
                 }).toThrow(`Invalid deployment space '${invalidSpace}' cannot be URI encoded.`);
             } finally {
@@ -855,8 +771,9 @@ describe('CLI Configuration', () => {
                     createConfiguration(version, [
                         'node', 'cli.js',
                         '--url', url,
-                        '--di-apikey', 'validkey123',
-                        '--deployment-spaces', `development,${invalidSpace1},${invalidSpace2},${invalidSpace3},production`
+                        '--zen-username', 'zenuser',
+                        '--zen-apikey', 'validkey123',
+                        '--deployment-spaces', `embedded,${invalidSpace1},${invalidSpace2},${invalidSpace3},production`
                     ]);
                 }).toThrow(`Invalid deployment spaces '${invalidSpace1}', '${invalidSpace2}', '${invalidSpace3}' cannot be URI encoded.`);
             } finally {
@@ -872,7 +789,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.deploymentSpaces).toEqual(deploymentSpaces.map(ds => encodeURIComponent(ds)));
@@ -883,7 +801,8 @@ describe('CLI Configuration', () => {
             createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--deployment-spaces', deploymentSpaces
             ]);
 
@@ -898,7 +817,7 @@ describe('CLI Configuration', () => {
                     'node', 'cli.js',
                     '--url', 'invalid-url'
                 ]);
-            }).toThrow(`The DI API key must be defined`); // Should throw on invalid API key first
+            }).toThrow(`The Zen API key must be defined`); // Should throw on invalid API key first
         });
     });
 
@@ -907,7 +826,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.decisionServiceIds).toEqual(undefined);
@@ -917,7 +837,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-ids', "A,B"
             ]);
 
@@ -928,7 +849,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-ids', "A,B\\,C,D"
             ]);
             expect(config.decisionServiceIds).toEqual(["A", "B,C", "D"]);
@@ -938,7 +860,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-ids', "A,B\\,"
             ]);
             expect(config.decisionServiceIds).toEqual(["A", "B,"]);
@@ -948,7 +871,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-ids', "A\\,\\,B,C"
             ]);
             expect(config.decisionServiceIds).toEqual(["A,,B", "C"]);
@@ -958,7 +882,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-ids', "   ,   ,   "
             ]);
             expect(config.decisionServiceIds).toEqual(undefined);
@@ -970,7 +895,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '60'
             ]);
 
@@ -982,7 +908,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.pollIntervalMs).toBe(Configuration.defaultPollIntervalMs());
@@ -994,7 +921,8 @@ describe('CLI Configuration', () => {
                 createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--di-apikey', 'validkey123',
+                    '--zen-username', 'zenuser',
+                    '--zen-apikey', 'validkey123',
                     '--decision-service-poll-interval', 'invalid'
                 ]);
             }).toThrow("Invalid poll interval: 'invalid'. Must be a valid number in seconds.");
@@ -1006,7 +934,8 @@ describe('CLI Configuration', () => {
                 createConfiguration(version, [
                     'node', 'cli.js',
                     '--url', url,
-                    '--di-apikey', 'validkey123',
+                    '--zen-username', 'zenuser',
+                    '--zen-apikey', 'validkey123',
                     '--decision-service-poll-interval', invalidPollInterval
                 ]);
             }).toThrow(`Invalid poll interval: '${invalidPollInterval}'. Must be at least 1 second.`);
@@ -1016,7 +945,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '1'
             ]);
 
@@ -1029,7 +959,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.pollIntervalMs).toBe(45000);
@@ -1041,7 +972,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '60'
             ]);
 
@@ -1052,7 +984,8 @@ describe('CLI Configuration', () => {
             createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '60'
             ]);
 
@@ -1064,12 +997,12 @@ describe('CLI Configuration', () => {
         test('should format interval less than 1 second as milliseconds', () => {
             // Direct construction to test sub-second intervals (CLI minimum is 1 second)
             const config = new Configuration(
-                Credentials.createDiApiKeyCredentials('dummy.api.key'),
+                Credentials.createZenApiKeyCredentials('dummy.user', 'dummy.api.key'),
                 new StdioServerTransport(),
                 url,
                 version,
                 false,
-                ['development'],
+                ['embedded'],
                 undefined,
                 500 // 500ms
             );
@@ -1081,7 +1014,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '1'
             ]);
 
@@ -1092,7 +1026,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '30'
             ]);
 
@@ -1102,12 +1037,12 @@ describe('CLI Configuration', () => {
         test('should format interval with fractional seconds', () => {
             // Direct construction to test fractional seconds (parseInt truncates decimals)
             const config = new Configuration(
-                Credentials.createDiApiKeyCredentials('dummy.api.key'),
+                Credentials.createZenApiKeyCredentials('dummy.user', 'dummy.api.key'),
                 new StdioServerTransport(),
                 url,
                 version,
                 false,
-                ['development'],
+                ['embedded'],
                 undefined,
                 45500 // 45.5 seconds = 45500ms
             );
@@ -1119,7 +1054,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '60'
             ]);
 
@@ -1130,7 +1066,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '120'
             ]);
 
@@ -1141,7 +1078,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '90'
             ]);
 
@@ -1151,12 +1089,12 @@ describe('CLI Configuration', () => {
         test('should format interval with minutes and fractional remaining seconds', () => {
             // Direct construction to test fractional seconds (parseInt truncates decimals)
             const config = new Configuration(
-                Credentials.createDiApiKeyCredentials('dummy.api.key'),
+                Credentials.createZenApiKeyCredentials('dummy.user', 'dummy.api.key'),
                 new StdioServerTransport(),
                 url,
                 version,
                 false,
-                ['development'],
+                ['embedded'],
                 undefined,
                 75500 // 75.5 seconds = 75500ms
             );
@@ -1168,7 +1106,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.formattedPollInterval()).toBe('10min');
@@ -1178,7 +1117,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '300'
             ]);
 
@@ -1189,7 +1129,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-poll-interval', '125'
             ]);
 
@@ -1201,7 +1142,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', 'group1'
             ]);
 
@@ -1212,7 +1154,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', 'group1,group2,group3'
             ]);
 
@@ -1223,7 +1166,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', 'group1 , group2 , group3'
             ]);
 
@@ -1234,7 +1178,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', 'group\\,with\\,commas,group2'
             ]);
 
@@ -1245,7 +1190,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', 'group-1,group_2,group.3'
             ]);
 
@@ -1256,7 +1202,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', 'group1,,group2,  ,group3'
             ]);
 
@@ -1267,7 +1214,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123'
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123'
             ]);
 
             expect(config.mcpGroups).toBeUndefined();
@@ -1277,7 +1225,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', ''
             ]);
 
@@ -1288,7 +1237,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', '   '
             ]);
 
@@ -1299,7 +1249,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', ',,,'
             ]);
 
@@ -1310,7 +1261,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', '  group1  '
             ]);
 
@@ -1321,7 +1273,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', 'group\\,1,group2\\,with\\,many\\,commas,group3'
             ]);
 
@@ -1332,7 +1285,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--deployment-spaces', 'dev,prod',
                 '--mcp-groups', 'frontend,backend'
             ]);
@@ -1345,7 +1299,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--decision-service-ids', 'service1,service2',
                 '--mcp-groups', 'group1,group2'
             ]);
@@ -1359,7 +1314,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', groups.join(',')
             ]);
 
@@ -1370,7 +1326,8 @@ describe('CLI Configuration', () => {
             const config = createConfiguration(version, [
                 'node', 'cli.js',
                 '--url', url,
-                '--di-apikey', 'validkey123',
+                '--zen-username', 'zenuser',
+                '--zen-apikey', 'validkey123',
                 '--mcp-groups', 'группа1,グループ2,组3'
             ]);
 

@@ -45,13 +45,6 @@ describe('Credentials', () => {
     const authorization = 'authorization';
 
     describe('constructor and toString', () => {
-        test('should call debug with credential info when creating DI API key credentials', () => {
-            const apikey = 'test-api-key';
-            Credentials.createDiApiKeyCredentials(apikey);
-            
-            expect(mockDebug).toHaveBeenCalledWith('DI API Key(API key: ***)');
-        });
-
         test('should call debug with credential info when creating Zen API key credentials', () => {
             const username = 'test-user';
             const apikey = 'test-api-key';
@@ -93,26 +86,6 @@ describe('Credentials', () => {
         });
     });
 
-    describe('for DI API key', () => {
-        const apikey = 'apikey';
-        test(`should return '${apikey}' as header key`, () => {
-            const credentials = Credentials.createDiApiKeyCredentials('toto');
-            expect(credentials.getAuthorizationHeaderKey()).toBe(apikey);
-        });
-
-        test('should return the API key as header value', () => {
-            const apiKey = 'titi';
-            const credentials = Credentials.createDiApiKeyCredentials(apiKey);
-            expect(credentials.getAuthorizationHeaderValue()).toBe(apiKey);
-        });
-
-        test('should not display sensitive information', () => {
-            const apiKey = 'woof woof';
-            const credentials = Credentials.createDiApiKeyCredentials(apiKey);
-            expect(credentials.toString()).not.toContain(apiKey);
-        });
-    });
-
     describe('for Zen API key', () => {
         test(`should return '${authorization}' as header key`, () => {
             const credentials = Credentials.createZenApiKeyCredentials('toto', 'tutu')
@@ -142,19 +115,11 @@ describe('Credentials', () => {
 
         describe('should return', () => {
 
-            test(`DI APi key credentials by default`, () => {
-                const diApikey = 'blah.blah.blah';
-                const credentials = Credentials.validateCredentials({diApikey});
-                expect(credentials!.authenticationMode).toBe(AuthenticationMode.DI_API_KEY);
-                expect(credentials!.getAuthorizationHeaderValue()).toBe(diApikey);
-            });
-
-            test(`DI APi key credentials for 'DiApiKey' authenticationMode`, () => {
-                const diApikey = 'blah.blah.blah';
-                const authenticationMode = AuthenticationMode.DI_API_KEY;
-                const credentials = Credentials.validateCredentials({diApikey, authenticationMode});
-                expect(credentials!.authenticationMode).toBe(authenticationMode);
-                expect(credentials!.getAuthorizationHeaderValue()).toBe(diApikey);
+            test(`Zen APi key credentials by default`, () => {
+                const zenApikey = 'blah.blah.blah';
+                const zenUsername = 'pim.pam.plouf';
+                const credentials = Credentials.validateCredentials({zenApikey, zenUsername});
+                expect(credentials!.authenticationMode).toBe(AuthenticationMode.ZEN_API_KEY);
             });
 
             test(`Zen APi key credentials for 'ZenApiKey' authenticationMode`, () => {
@@ -184,19 +149,7 @@ describe('Credentials', () => {
                 const authenticationMode = 'toto'
                 expect(() => {
                     Credentials.validateCredentials({authenticationMode: authenticationMode});
-                }).toThrow(`Invalid authentication mode: '${authenticationMode}'. Must be one of: 'diapikey', 'zenapikey', 'basic'`)
-            });
-
-            test(`when apikey is not defined for 'DiApiKey' authenticationMode`, () => {
-                expect(() => {
-                    Credentials.validateCredentials({authenticationMode: AuthenticationMode.DI_API_KEY});
-                }).toThrow(`The DI API key must be defined`)
-            });
-
-            test(`when apikey is empty for 'DiApiKey' authenticationMode`, () => {
-                expect(() => {
-                    Credentials.validateCredentials({diApikey: '      ', authenticationMode: AuthenticationMode.DI_API_KEY});
-                }).toThrow(`The DI API key cannot be empty`)
+                }).toThrow(`Invalid authentication mode: '${authenticationMode}'. Must be one of: 'zenapikey', 'basic'`)
             });
 
             test(`when apikey is not defined for 'ZenApiKey' authenticationMode`, () => {
@@ -249,13 +202,13 @@ describe('Credentials', () => {
 
             test(`when the APIKEY environment variable is not defined`, () => {
                 expect(() => Credentials.validateCredentials({})).
-                toThrow('The DI API key must be defined');
+                toThrow('The Zen API key must be defined');
             });
 
             test(`when the APIKEY environment variable is empty`, () => {
-                process.env.DI_APIKEY = '          ';
+                process.env.ZEN_APIKEY = '          ';
                 expect(() => Credentials.validateCredentials({})).
-                toThrow('The DI API key cannot be empty');
+                toThrow('The Zen API key cannot be empty');
             });
 
             test(`when the APIKEY environment variable is not defined for the 'Zen Api Key' authentication mode`, () => {
@@ -296,15 +249,6 @@ describe('Credentials', () => {
 
         describe('when command line arguments are not provided, should use', () => {
 
-            test('DI_APIKEY environment variable', () => {
-                const apiKey = 'the api key';
-                process.env.DI_APIKEY = apiKey;
-                expect(Credentials.validateCredentials({})).toMatchObject({
-                    apikey: apiKey,
-                    authenticationMode: AuthenticationMode.DI_API_KEY
-                });
-            });
-
             test('AUTHENTICATION_MODE, ZEN_APIKEY and ZEN_USERNAME environment variables', () => {
                 const apiKey = 'the api key';
                 process.env.ZEN_APIKEY = apiKey;
@@ -340,15 +284,6 @@ describe('Credentials', () => {
 
         describe('should prioritize command line arguments over environment variables', () => {
 
-            test('for DI API key', () => {
-                const diApikey = 'the api key'
-                process.env.DI_APIKEY = otherApiKey;
-                expect(Credentials.validateCredentials({diApikey})).toMatchObject({
-                    apikey: diApikey,
-                    authenticationMode: AuthenticationMode.DI_API_KEY
-                });
-            });
-
             test('for Zen API key', () => {
                 const zenApikey = 'the api key'
                 process.env.ZEN_APIKEY = otherApiKey;
@@ -377,7 +312,7 @@ describe('Credentials', () => {
                 const zenApikey = 'the api key';
                 const zenUsername = 'John Smith';
                 const authenticationMode = AuthenticationMode.ZEN_API_KEY.toLowerCase();
-                process.env.AUTHENTICATION_MODE = AuthenticationMode.DI_API_KEY;
+                process.env.AUTHENTICATION_MODE = AuthenticationMode.BASIC;
                 expect(Credentials.validateCredentials({zenApikey, zenUsername, authenticationMode: authenticationMode})).toMatchObject({
                     apikey: zenApikey,
                     username: zenUsername,
@@ -454,47 +389,8 @@ describe('Credentials', () => {
 
         describe('should not take into account environment variables used by other authentication modes', () => {
 
-            test(`for DI API key authentication`, () => {
-                process.env.USERNAME = 'OS dependant username';
-                process.env.BASIC_USERNAME = 'username for basic authentication';
-                process.env.PASSWORD = 'password for basic authentication';
-                process.env.ZEN_USERNAME = 'username for Zen API key authentication';
-                const diApikey = 'the DI API key';
-                const authenticationMode = AuthenticationMode.DI_API_KEY.toLowerCase();
-                expect(Credentials.validateCredentials({diApikey})).toMatchObject({
-                    apikey: diApikey,
-                    username: undefined,
-                    password: undefined,
-                    authenticationMode: AuthenticationMode.DI_API_KEY
-                });
-
-                expect(Credentials.validateCredentials({diApikey, authenticationMode})).toMatchObject({
-                    apikey: diApikey,
-                    username: undefined,
-                    password: undefined,
-                    authenticationMode: AuthenticationMode.DI_API_KEY
-                });
-
-                process.env.AUTHENTICATION_MODE = authenticationMode;
-                expect(Credentials.validateCredentials({diApikey})).toMatchObject({
-                    apikey: diApikey,
-                    username: undefined,
-                    password: undefined,
-                    authenticationMode: AuthenticationMode.DI_API_KEY
-                });
-
-                process.env.DI_APIKEY = diApikey;
-                expect(Credentials.validateCredentials({})).toMatchObject({
-                    apikey: diApikey,
-                    username: undefined,
-                    password: undefined,
-                    authenticationMode: AuthenticationMode.DI_API_KEY
-                });
-            });
-
             test(`for Zen API key authentication`, () => {
                 process.env.USERNAME = 'OS dependant username';
-                process.env.DI_APIKEY = 'API key for DI API key authentication';
                 process.env.BASIC_USERNAME = 'username for basic authentication';
                 process.env.BASIC_PASSWORD = 'password for basic authentication';
                 const zenApikey = 'the Zen API key';
@@ -520,7 +416,6 @@ describe('Credentials', () => {
 
             test(`for basic authentication`, () => {
                 process.env.USERNAME = 'OS dependant username';
-                process.env.DI_APIKEY = 'API key for dI API key authentication';
                 process.env.ZEN_APIKEY = 'API key for Zen API key authentication';
                 process.env.ZEN_USERNAME = 'username for Zen API key authentication';
                 const basicUsername = 'username for basic authentication';

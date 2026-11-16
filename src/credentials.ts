@@ -63,10 +63,6 @@ export class Credentials {
         );
 
         switch (authenticationMode) {
-            case AuthenticationMode.DI_API_KEY: {
-                const apikey = resolveOption(options.diApikey, ENV_VARIABLES.DI_APIKEY);
-                return this.createDiApiKeyCredentials(apikey);
-            }
             case AuthenticationMode.ZEN_API_KEY: {
                 const apikey = resolveOption(options.zenApikey, ENV_VARIABLES.ZEN_APIKEY);
                 const username = resolveOption(options.zenUsername, ENV_VARIABLES.ZEN_USERNAME);
@@ -79,11 +75,6 @@ export class Credentials {
                 return this.createBasicAuthCredentials(username, password);
             }
         }
-    }
-
-    static createDiApiKeyCredentials(apikey: string | undefined) {
-        this.checkNonEmptyString(apikey, 'DI API key');
-        return new Credentials({apikey}, AuthenticationMode.DI_API_KEY);
     }
 
     static createZenApiKeyCredentials(username: string | undefined, apikey: string | undefined) {
@@ -111,9 +102,6 @@ export class Credentials {
 
     toString() {
         switch (this.authenticationMode) {
-            case AuthenticationMode.DI_API_KEY: {
-                return `DI API Key(API key: ***)`;
-            }
             case AuthenticationMode.ZEN_API_KEY: {
                 return `Zen API Key(username: ${this.username}, API key: ***)`;
             }
@@ -126,9 +114,6 @@ export class Credentials {
 
     getAuthorizationHeaderValue(): string {
         switch (this.authenticationMode) {
-            case AuthenticationMode.DI_API_KEY: {
-                return this.apikey!;
-            }
             case AuthenticationMode.ZEN_API_KEY: {
                 const encoded = Buffer.from(`${this.username}:${this.apikey}`).toString('base64');
                 return `ZenApiKey ${encoded}`;
@@ -142,15 +127,6 @@ export class Credentials {
     }
 
     getAuthorizationHeaderKey() : string {
-        switch (this.authenticationMode) {
-            case AuthenticationMode.DI_API_KEY: {
-                return 'apikey';
-            }
-            case AuthenticationMode.BASIC:
-            case AuthenticationMode.ZEN_API_KEY:
-            default: {
-                return 'authorization';
-            }
-        }
+        return 'authorization';
     }
 }

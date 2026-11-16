@@ -61,7 +61,7 @@ describe('Mcp Server', () => {
         const transport = new StdioServerTransport(fakeStdin, fakeStdout);
         const clientTransport = new StreamClientTransport(fakeStdout, fakeStdin);
         const configuration = new Configuration(
-            Credentials.createDiApiKeyCredentials('dummy.api.key'),
+            Credentials.createZenApiKeyCredentials('dummy.user', 'dummy.api.key'),
             transport,
             'https://example.com',
             '1.2.3',

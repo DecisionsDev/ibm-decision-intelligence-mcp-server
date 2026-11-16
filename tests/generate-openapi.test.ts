@@ -48,7 +48,7 @@ describe('generateOpenAPIContent', () => {
     it('should properly encode special characters in URL', () => {
         const decisionServiceId = 'test/Service With Spaces';
         const decisionId = 'test/service/path/1-2025-06-18T13:00:39.447Z';
-        const deploymentSpaceId = 'development';
+        const deploymentSpaceId = 'embedded';
         
         const result = generateOpenAPIContent(decisionServiceId, decisionId, deploymentSpaceId);
         
