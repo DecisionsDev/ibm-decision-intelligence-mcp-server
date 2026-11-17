@@ -55,7 +55,7 @@ npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS>
 ```
 
 where
-- `AUTHENTICATION_MODE` (optional) is the authentication mode to access the decision runtime; either `zenapikey`, or `basic` respectively for authenticating with Zen API key, or basic credentials (i.e. username and password)
+- `AUTHENTICATION_MODE` (optional) is the authentication mode to access the decision runtime; either `zenapikey`, or `basic` respectively for authenticating with Zen API key, or basic credentials (i.e. username and password). Defaults to `zenapikey`.
 - `CREDENTIALS` is one of the following options, depending on the chosen authentication mode:
     - For Zen API key authentication: `--zen-username <ZEN_USERNAME> --zen-apikey <ZEN_API_KEY>` where `ZEN_USERNAME` and `ZEN_API_KEY` are the Zen API key credentials to access the decision runtime for IBM DI CMS (see [Authorizing HTTP requests by using the Zen API key](https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=administering-authorizing-http-requests-by-using-zen-api-key))
     - For basic authentication: `--basic-username <BASIC_USERNAME> --basic-password <BASIC_PASSWORD>` where `BASIC_USERNAME` and `BASIC_PASSWORD` are the basic authentication credentials to connect to the decision runtime for IBM DI CMS.
@@ -68,7 +68,7 @@ The following environment variables can be used in addition to the command line 
 
 | CLI Option             | Environment Variable | Description                                                                                                  |
 |------------------------|----------------------|--------------------------------------------------------------------------------------------------------------|
-| --authentication-mode  | AUTHENTICATION_MODE  | (Optional) Authentication mode to connect to the decision runtime: `zenapikey` or `basic` |
+| --authentication-mode  | AUTHENTICATION_MODE  | (Optional) Authentication mode to connect to the decision runtime: `zenapikey` or `basic` (default: `zenapikey`) |
 | --zen-username         | ZEN_USERNAME         | Zen username                                                                                                 |
 | --zen-apikey           | ZEN_APIKEY           | Zen API key                                                                                                  |
 | --basic-username       | BASIC_USERNAME       | Basic authentication username                                                                                |
