@@ -117,6 +117,43 @@ test('getDecisionServiceIds', () => {
     expect(getDecisionServiceIds(metadata, zenApiKeyConfiguration)).toEqual(["ID1", "ID2"]);
 });
 
+test('getDecisionServiceIds with deploymentTime ordering and mcpGroups', () => {
+    const customMetadata = [
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID1" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2024-01-01T00:00:00.000Z' }, "mcpGroups": { "value": "grpA" } },
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID1" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2025-01-01T00:00:00.000Z' }, "mcpGroups": { "value": "grpA" } },
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID1" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2023-01-01T00:00:00.000Z' }, "mcpGroups": { "value": "grpA" } },
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID2" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2025-01-01T00:00:00.000Z' }, "mcpGroups": { "value": "grpB" } },
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID3" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2025-01-01T00:00:00.000Z' } }
+    ];
+
+    expect(getDecisionServiceIds(customMetadata, zenApiKeyConfiguration)).toEqual(["ID1", "ID2", "ID3"]);
+
+    const configWithGroups = new Configuration(
+        Credentials.createZenApiKeyCredentials(username, apikey),
+        new StdioServerTransport(),
+        url,
+        version,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        ['grpA']
+    );
+    expect(getDecisionServiceIds(customMetadata, configWithGroups)).toEqual(["ID1"]);
+});
+
+test('getDecisionServiceOpenAPI throws on incident response', async () => {
+    nock(url)
+        .get('/selectors/lastDeployedDecisionService/deploymentSpaces/production/openapi?decisionServiceId=ID_ERR&outputFormat=JSON/openapi')
+        .matchHeader('authorization', `ZenApiKey ${encodedUsernameApiKey}`)
+        .reply(200, {
+            incident: { incidentCategory: 'NotFound', stackTrace: 'details' }
+        });
+
+    await expect(getDecisionServiceOpenAPI(zenApiKeyConfiguration, 'production', 'ID_ERR'))
+        .rejects.toThrow("Failed to get OpenAPI for decision service 'ID_ERR' in deployment space 'production': NotFound - details");
+});
+
 test(`getMetadata with 'test' deployment space`, async () => {
     return getMetadata(basicAuthConfiguration, 'test')
         .then(data => {
