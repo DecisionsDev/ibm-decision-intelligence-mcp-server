@@ -28,7 +28,7 @@ const fail = (message) => {
 // 1. Must be on main
 const branch = run("git rev-parse --abbrev-ref HEAD");
 if (branch !== "main") {
-  fail(`refusing to publish from "${branch}". Switch to main.`);
+  fail(`refusing to publish from branch "${branch}". Switch to main.`);
 }
 
 // 2. Working tree must be clean (no uncommitted or untracked changes)
