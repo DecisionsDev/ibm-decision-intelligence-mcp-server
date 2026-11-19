@@ -1,7 +1,9 @@
 build
 node_modules
+.bob
 .project
 .idea
 tsconfig.tsbuildinfo
 coverage
 .DS_Store
+*.tgz
