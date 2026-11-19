@@ -65,6 +65,14 @@ npm run dev -- --zen-username <ZEN_USERNAME> --zen-apikey <APIKEY> --url <URL>
 ZEN_USERNAME=<ZEN_USERNAME> ZEN_APIKEY=<APIKEY> URL=<URL> npm run dev
 ```
 
+#### Creating a tarball on a PR branch for testing purpose
+
+```
+npm ci
+npm run build
+npm pack --ignore-scripts   # skips the release check; the tarball is NOT publishable
+```
+
 #### Releasing a new version
 
 > **Always release and publish from an up-to-date `main` branch, never from a
@@ -92,7 +100,6 @@ ZEN_USERNAME=<ZEN_USERNAME> ZEN_APIKEY=<APIKEY> URL=<URL> npm run dev
      - IBM Bob
 
 4. Tag and publish (still on `main`, in sync with `origin/main`)
-   - Run the release check: `node scripts/check-release.js`
    - Create a new release in GitHub from `main` (this creates the `X.Y.Z` tag)
    - `npm login`
    - `npm publish di-mcp-server-X.Y.Z.tgz` (publishes the exact tarball you tested)
