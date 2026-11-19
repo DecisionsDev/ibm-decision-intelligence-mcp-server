@@ -64,25 +64,44 @@ npm run dev -- --zen-username <ZEN_USERNAME> --zen-apikey <APIKEY> --url <URL>
 ```bash
 ZEN_USERNAME=<ZEN_USERNAME> ZEN_APIKEY=<APIKEY> URL=<URL> npm run dev
 ```
+
 #### Releasing a new version
 
-- Checkout the main branch
-- Build and test the project:
-  - npm ci
-  - npm run build
-  - npm run test
-- Create a new branch for the release
-- Bump the version in BOTH `package.json` and `package-lock.json` (use `npm version ...`)
-- Commit the changes, push to the release branch and create a pull request
-- Merge the release branch into main
-- Create a new release in GitHub
-- Run npm pack
-- Test the produced `di-mcp-server-X.Y.Z.tgz` npm package locally in target IDEs:
-  - IBM Bob
-- Publish the new version to NPM
-   - npm login
-   - npm publish 
-- Test the new version in target IDEs and IBM watsonx Orchestrate
-  - IBM Bob
-  - IBM watsonx Orchestrate
+> **Always release and publish from an up-to-date `main` branch, never from a
+> PR or release branch.** This keeps what is published to npmjs in sync with
+> what is tagged in git. Published versions are immutable, so a mismatch cannot
+> be fixed afterwards.
 
+1. Create the release PR
+   - Checkout `main` and pull the latest changes
+   - Create a release branch
+   - Bump the version in BOTH `package.json` and `package-lock.json`:
+     `npm version <X.Y.Z> --no-git-tag-version`
+   - Commit, push the branch and open a pull request
+   - Merge the PR into `main`
+
+2. Build and test from `main`
+   - `git checkout main && git pull`
+   - `npm ci`
+   - `npm run build`
+   - `npm run test`
+
+3. Package and verify locally
+   - `npm pack`
+   - Test the produced `di-mcp-server-X.Y.Z.tgz` locally in the target IDEs:
+     - IBM Bob
+
+4. Tag and publish (still on `main`, in sync with `origin/main`)
+   - Run the release check: `node scripts/check-release.js`
+   - Create a new release in GitHub from `main` (this creates the `X.Y.Z` tag)
+   - `npm login`
+   - `npm publish di-mcp-server-X.Y.Z.tgz` (publishes the exact tarball you tested)
+
+5. Verify the published version
+   - `npm view <package-name> version`
+   - Test the new version in the target IDEs and IBM watsonx Orchestrate:
+     - IBM Bob
+     - IBM watsonx Orchestrate
+
+If a published version turns out to be broken, do not try to republish it.
+Release a new patch version and, if needed, run `npm deprecate` on the bad one.
