@@ -20,20 +20,12 @@ describe(`Decision Runtime`, () => {
 
     describe(`defaultAuthenticationMode`, () => {
 
-        test(`should return AuthenticationMode.DI_API_KEY`, () => {
-            expect(defaultAuthenticationMode()).toEqual(AuthenticationMode.DI_API_KEY);
+        test(`should return AuthenticationMode.ZEN_API_KEY`, () => {
+            expect(defaultAuthenticationMode()).toEqual(AuthenticationMode.ZEN_API_KEY);
         });
     });
 
     describe(`parseDecisionRuntime`, () => {
-
-        test(`should parse 'DiApiKey' as AuthenticationMode.DI_API_KEY`, () => {
-            expect(parseAuthenticationMode('DiApiKey')).toEqual(AuthenticationMode.DI_API_KEY);
-        });
-
-        test(`should parse 'diapikey' as AuthenticationMode.DI_API_KEY`, () => {
-            expect(parseAuthenticationMode('diapikey')).toEqual(AuthenticationMode.DI_API_KEY);
-        });
 
         test(`should parse 'ZenApiKey' as AuthenticationMode.ZEN_API_KEY`, () => {
             expect(parseAuthenticationMode('ZenApiKey')).toEqual(AuthenticationMode.ZEN_API_KEY);

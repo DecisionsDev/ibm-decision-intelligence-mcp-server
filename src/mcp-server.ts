@@ -62,11 +62,7 @@ export function validateSchema(schema: OpenAPIV3_1.SchemaObject, components?: Op
             strict: false,
             validateSchema: true,
             allErrors: true,
-            logger: {
-                log: (...args: (string | object)[]) => debug("Ajv log:", ...args),
-                warn: (...args: (string | object)[]) => debug("Ajv warn:", ...args),
-                error: (...args: (string | object)[]) => debug("Ajv error:", ...args)
-            }
+            logger: false
         });
         
         // If components are provided, add them as schemas for $ref resolution

@@ -55,12 +55,12 @@ npx -y di-mcp-server [--authentication-mode <AUTHENTICATION_MODE>] <CREDENTIALS>
 ```
 
 where
-- `AUTHENTICATION_MODE` (optional) is the authentication mode to access the decision runtime; either `zenapikey`, or `basic` respectively for authenticating with Zen API key, or basic credentials (i.e. username and password)
+- `AUTHENTICATION_MODE` (optional) is the authentication mode to access the decision runtime; either `zenapikey`, or `basic` respectively for authenticating with Zen API key, or basic credentials (i.e. username and password). Defaults to `zenapikey`.
 - `CREDENTIALS` is one of the following options, depending on the chosen authentication mode:
-    - For Zen API key authentication: `--zen-username <ZEN_USERNAME> --apikey <ZEN_API_KEY>` where `ZEN_USERNAME` and `ZEN_API_KEY` are the Zen API key credentials to access the decision runtime for IBM DI CMS (see [Authorizing HTTP requests by using the Zen API key](https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=administering-authorizing-http-requests-by-using-zen-api-key))
+    - For Zen API key authentication: `--zen-username <ZEN_USERNAME> --zen-apikey <ZEN_API_KEY>` where `ZEN_USERNAME` and `ZEN_API_KEY` are the Zen API key credentials to access the decision runtime for IBM DI CMS (see [Authorizing HTTP requests by using the Zen API key](https://www.ibm.com/docs/en/cloud-paks/cp-biz-automation/25.0.0?topic=administering-authorizing-http-requests-by-using-zen-api-key))
     - For basic authentication: `--basic-username <BASIC_USERNAME> --basic-password <BASIC_PASSWORD>` where `BASIC_USERNAME` and `BASIC_PASSWORD` are the basic authentication credentials to connect to the decision runtime for IBM DI CMS.
 - `RUNTIME_BASE_URL` is the base URL of the decision runtime REST API. 
-- `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `development`).
+- `DEPLOYMENT_SPACES` (optional) is a comma-separated list of deployment spaces to scan (defaults to `embedded`).
 - `DECISION_SERVICE_IDS` (optional) If defined, comma-separated list of decision service ids to be exposed as tools
 - `DECISION_SERVICE_POLL_INTERVAL` (optional) is the interval in seconds for polling decision services (default: `30`, minimum: `1`)
 
@@ -68,14 +68,14 @@ The following environment variables can be used in addition to the command line 
 
 | CLI Option             | Environment Variable | Description                                                                                                  |
 |------------------------|----------------------|--------------------------------------------------------------------------------------------------------------|
-| --authentication-mode  | AUTHENTICATION_MODE  | (Optional) Authentication mode to connect to the decision runtime: `zenapikey` or `basic` |
+| --authentication-mode  | AUTHENTICATION_MODE  | (Optional) Authentication mode to connect to the decision runtime: `zenapikey` or `basic` (default: `zenapikey`) |
 | --zen-username         | ZEN_USERNAME         | Zen username                                                                                                 |
 | --zen-apikey           | ZEN_APIKEY           | Zen API key                                                                                                  |
 | --basic-username       | BASIC_USERNAME       | Basic authentication username                                                                                |
 | --basic-password       | BASIC_PASSWORD       | Basic authentication password                                                                                |
 | --decision-service-ids | DECISION_SERVICE_IDS | (Optional) Comma-separated list of decision services (default: fetch all decision services)                    |
 | --mcp-groups            | N/A           | (Optional) Only decision services with the metadata 'mcpGroups' set to one of the value of this comma-separated list will be exposed |
-| --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `development`)                          |
+| --deployment-spaces    | DEPLOYMENT_SPACES    | (Optional) Comma-separated list of deployment spaces to scan (default: `embedded`)                          |
 | --debug                | DEBUG                | When the value is `true`, the debug messages are written to the `stderr` of the MCP server                   |
 | --decision-service-poll-interval | DECISION_SERVICE_POLL_INTERVAL | (Optional) Interval in seconds for polling decision services (default: `30`, minimum: `1`)               |
 | --url                  | URL                  | Base URL of the decision runtime </br>                                                                       |
@@ -116,6 +116,8 @@ You can integrate decision services into Claude Desktop by adding the MCP server
                   "args": [
                       "-y",
                       "di-mcp-server",
+                      "--zen-username",
+                      "<ZEN_USERNAME>",
                       "--zen-apikey",
                       "<APIKEY>",
                       "--url",
@@ -126,7 +128,7 @@ You can integrate decision services into Claude Desktop by adding the MCP server
           [..]
       }
       ```
-   - Alternatively, you can use the `APIKEY` and `URL` environment variables to respectively specify the API key and the base URL of the decision runtime REST API:
+   - Alternatively, you can use the `ZEN_USERNAME`, `ZEN_APIKEY` and `URL` environment variables to respectively specify the Zen username, the API key and the base URL of the decision runtime REST API:
 
       ```json
       {
@@ -136,6 +138,7 @@ You can integrate decision services into Claude Desktop by adding the MCP server
                   "command": "npx",
                   "args": ["-y", "di-mcp-server"],
                   "env": {
+                      "ZEN_USERNAME": "<ZEN_USERNAME>",
                       "ZEN_APIKEY": "<APIKEY>",
                       "URL": "https://<DI_CMS_CLUSTER_URL>/ads/runtime/api/v1"
                   }
@@ -163,7 +166,7 @@ You can integrate decision services into Cursor by adding the MCP server.
 
 4. Add a new MCP server entry.
 
-   As for Claude Desktop, you can specify the API key and base URL of the decision runtime REST API using with one of the following methods:
+   As for Claude Desktop, you can specify the Zen username, API key and base URL of the decision runtime REST API using with one of the following methods:
    - Using command line arguments:
       ```json
       {
@@ -174,6 +177,8 @@ You can integrate decision services into Cursor by adding the MCP server.
                   "args": [
                       "-y",
                       "di-mcp-server",
+                      "--zen-username",
+                      "<ZEN_USERNAME>",
                       "--zen-apikey",
                       "<APIKEY>",
                       "--url",
@@ -193,6 +198,7 @@ You can integrate decision services into Cursor by adding the MCP server.
                   "command": "npx",
                   "args": ["-y", "di-mcp-server"],
                   "env": {
+                      "ZEN_USERNAME": "<ZEN_USERNAME>",
                       "ZEN_APIKEY": "<APIKEY>",
                       "URL": "https://<DI_CMS_CLUSTER_URL>/ads/runtime/api/v1"
                   }
@@ -214,7 +220,7 @@ The MCP server supports only the STDIO transport. To connect an MCP client that 
 
 ```bash
    npx -y supergateway@latest \
-     --stdio "npx -y di-mcp-server --zen-apikey <APIKEY> --url <DI_RUNTIME_URL>" \
+     --stdio "npx -y di-mcp-server --zen-username <ZEN_USERNAME> --zen-apikey <APIKEY> --url <DI_RUNTIME_URL>" \
      --outputTransport streamableHttp \
      --port 8000
 ```
@@ -290,6 +296,8 @@ The decision service ID is defined in the `decisionServiceId` metadata of the de
             "args": [
                 "-y",
                 "di-mcp-server",
+                "--zen-username",
+                "<ZEN_USERNAME>",
                 "--zen-apikey",
                 "<APIKEY>",
                 "--url",
@@ -318,6 +326,8 @@ The MCP groups are defined in the `mcpGroups` metadata of the deployed decision 
             "args": [
                 "-y",
                 "di-mcp-server",
+                "--zen-username",
+                "<ZEN_USERNAME>",
                 "--zen-apikey",
                 "<APIKEY>",
                 "--url",

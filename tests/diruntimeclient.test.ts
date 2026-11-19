@@ -65,7 +65,6 @@ const apikey = 'apiKey';
 const version = '1.2.3';
 const username = 'username';
 const encodedUsernameApiKey= Buffer.from(`${username}:${apikey}`).toString('base64');
-const diApiKeyConfiguration = new Configuration(Credentials.createDiApiKeyCredentials(apikey), new StdioServerTransport(), url, version, false, undefined);
 const zenApiKeyConfiguration = new Configuration(Credentials.createZenApiKeyCredentials(username, apikey), new StdioServerTransport(), url, version, false, undefined);
 const password = 'password';
 const encodedUsernamePassword= Buffer.from(`${username}:${password}`).toString('base64');
@@ -97,10 +96,10 @@ nock(url)
     .get('/deploymentSpaces/nonexistent/metadata?names=decisionServiceId,deploymentTime,mcpGroups')
     .reply(404)
     .get('/selectors/lastDeployedDecisionService/deploymentSpaces/production/openapi?decisionServiceId=ID1&outputFormat=JSON/openapi')
-    .matchHeader('apikey', apikey)
+    .matchHeader('authorization', `ZenApiKey ${encodedUsernameApiKey}`)
     .reply(200, loanValidationOpenapi)
     .post('/selectors/lastDeployedDecisionService/deploymentSpaces/foo.bar/operations/execute/execute?decisionServiceId=ID1')
-    .matchHeader('apikey', apikey)
+    .matchHeader('authorization', `ZenApiKey ${encodedUsernameApiKey}`)
     .reply(200, { result: 'default-success' })
     .get('/deploymentSpaces/staging/decisions/decision123/openapi')
     .matchHeader('authorization', `ZenApiKey ${encodedUsernameApiKey}`)
@@ -115,7 +114,44 @@ nock(url)
     .reply(200, decisionMetadata);
 
 test('getDecisionServiceIds', () => {
-    expect(getDecisionServiceIds(metadata, diApiKeyConfiguration)).toEqual(["ID1", "ID2"]);
+    expect(getDecisionServiceIds(metadata, zenApiKeyConfiguration)).toEqual(["ID1", "ID2"]);
+});
+
+test('getDecisionServiceIds with deploymentTime ordering and mcpGroups', () => {
+    const customMetadata = [
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID1" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2024-01-01T00:00:00.000Z' }, "mcpGroups": { "value": "grpA" } },
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID1" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2025-01-01T00:00:00.000Z' }, "mcpGroups": { "value": "grpA" } },
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID1" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2023-01-01T00:00:00.000Z' }, "mcpGroups": { "value": "grpA" } },
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID2" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2025-01-01T00:00:00.000Z' }, "mcpGroups": { "value": "grpB" } },
+        { "decisionServiceId": { "name": "id", "kind": "PLAIN", "readOnly": true, "value": "ID3" }, "deploymentTime": { "name": 'dt', "kind": 'PLAIN', "readOnly": true, "value": '2025-01-01T00:00:00.000Z' } }
+    ];
+
+    expect(getDecisionServiceIds(customMetadata, zenApiKeyConfiguration)).toEqual(["ID1", "ID2", "ID3"]);
+
+    const configWithGroups = new Configuration(
+        Credentials.createZenApiKeyCredentials(username, apikey),
+        new StdioServerTransport(),
+        url,
+        version,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        ['grpA']
+    );
+    expect(getDecisionServiceIds(customMetadata, configWithGroups)).toEqual(["ID1"]);
+});
+
+test('getDecisionServiceOpenAPI throws on incident response', async () => {
+    nock(url)
+        .get('/selectors/lastDeployedDecisionService/deploymentSpaces/production/openapi?decisionServiceId=ID_ERR&outputFormat=JSON/openapi')
+        .matchHeader('authorization', `ZenApiKey ${encodedUsernameApiKey}`)
+        .reply(200, {
+            incident: { incidentCategory: 'NotFound', stackTrace: 'details' }
+        });
+
+    await expect(getDecisionServiceOpenAPI(zenApiKeyConfiguration, 'production', 'ID_ERR'))
+        .rejects.toThrow("Failed to get OpenAPI for decision service 'ID_ERR' in deployment space 'production': NotFound - details");
 });
 
 test(`getMetadata with 'test' deployment space`, async () => {
@@ -131,7 +167,7 @@ test('getMetadata with non existent deploymentSpace', async () => {
 });
 
 test(`getDecisionServiceOpenAPI with 'production' deploymentSpace`, async() => {
-    return getDecisionServiceOpenAPI(diApiKeyConfiguration, 'production', 'ID1')
+    return getDecisionServiceOpenAPI(zenApiKeyConfiguration, 'production', 'ID1')
         .then(data => {
             expect(data).toEqual(loanValidationOpenapi);
         })
@@ -139,7 +175,7 @@ test(`getDecisionServiceOpenAPI with 'production' deploymentSpace`, async() => {
 
 test(`executeLastDeployedDecisionService with 'foo.bar' deploymentSpace`, async() => {
     const input = { data: 'test' };
-    return executeLastDeployedDecisionService(diApiKeyConfiguration, 'foo.bar', 'ID1', 'execute', input)
+    return executeLastDeployedDecisionService(zenApiKeyConfiguration, 'foo.bar', 'ID1', 'execute', input)
         .then(data => {
             expect(JSON.parse(data)).toEqual({ result: 'default-success' });
         })

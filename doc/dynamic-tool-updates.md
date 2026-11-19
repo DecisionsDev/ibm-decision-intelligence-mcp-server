@@ -29,12 +29,12 @@ You can customize the polling interval using the `--decision-service-poll-interv
 
 ```bash
 # Set polling interval to 60 seconds
-npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL> --decision-service-poll-interval 60
+npx -y di-mcp-server --zen-username <YOUR_ZEN_USERNAME> --zen-apikey <YOUR_API_KEY> --url <RUNTIME_URL> --decision-service-poll-interval 60
 ```
 
 Or using an environment variable:
 ```bash
 export DECISION_SERVICE_POLL_INTERVAL=60
-npx -y di-mcp-server --di-apikey <YOUR_API_KEY> --url <RUNTIME_URL>
+npx -y di-mcp-server --zen-username <YOUR_ZEN_USERNAME> --zen-apikey <YOUR_API_KEY> --url <RUNTIME_URL>
 ```
 **Note**: The minimum allowed polling interval is 1 second.

@@ -63,14 +63,14 @@ describe('getToolName', () => {
 
     const url = 'https://example.com';
     const decisionId = 'decision-id';
-    const deploymentSpace = `development`;
+    const deploymentSpace = `embedded`;
     nock(url)
         .get(`/deploymentSpaces/${deploymentSpace}/decisions/${decisionId}/metadata`)
         .reply(200, decisionMetadata)
-        .get(`/deploymentSpaces/development/decisions/${decisionId}/metadata`)
+        .get(`/deploymentSpaces/embedded/decisions/${decisionId}/metadata`)
         .reply(200, { map : {}});
 
-    const configuration = new Configuration(Credentials.createDiApiKeyCredentials('apiKey'), new StdioServerTransport(), url, '1.2.3', false);
+    const configuration = new Configuration(Credentials.createZenApiKeyCredentials('dummy.user', 'apiKey'), new StdioServerTransport(), url, '1.2.3', false);
     const decisionServiceName = 'decision-service-name';
     const info = {
         ['x-ibm-ads-decision-service-name'] : decisionServiceName,

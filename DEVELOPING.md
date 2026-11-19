@@ -58,11 +58,11 @@ Run the MCP server with `nodemon` and the `DEBUG` environment variable:
 
 #### Using command line options
 ```bash
-npm run dev -- --apikey <APIKEY> --url <URL>
+npm run dev -- --zen-username <ZEN_USERNAME> --zen-apikey <APIKEY> --url <URL>
 ```
 #### Using environment variables
 ```bash
-APIKEY=<APIKEY> URL=<URL> npm run dev
+ZEN_USERNAME=<ZEN_USERNAME> ZEN_APIKEY=<APIKEY> URL=<URL> npm run dev
 ```
 #### Releasing a new version
 

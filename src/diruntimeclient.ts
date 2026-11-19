@@ -95,7 +95,7 @@ export function getDecisionServiceIds(metadata: MetadataType[], configuration: C
             lastDecisionServicesMetadata[m.decisionServiceId.value] = m;
         } else {
             const deploymentTime = Date.parse(m.deploymentTime.value);
-            if (parseInt(lastDecision.deploymentTime.value) < deploymentTime) {
+            if (Date.parse(lastDecision.deploymentTime.value) < deploymentTime) {
                 lastDecisionServicesMetadata[m.decisionServiceId.value] = m;
             }
         }

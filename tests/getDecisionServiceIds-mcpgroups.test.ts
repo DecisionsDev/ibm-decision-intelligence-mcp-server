@@ -25,7 +25,7 @@ const version = '1.0.0';
 
 function createConfiguration(mcpGroups?: string[]): Configuration {
     return new Configuration(
-        Credentials.createDiApiKeyCredentials(dummy_apikey),
+        Credentials.createZenApiKeyCredentials('dummy.user', dummy_apikey),
         new StdioServerTransport(),
         url,
         version,
