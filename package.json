@@ -4,6 +4,8 @@
   "description": "",
   "main": "build/index.js",
   "scripts": {
+    "release:check": "node scripts/check-release.js",
+    "prepack": "npm run release:check && npm run build",
     "lint": "eslint src --ext .ts",
     "build": "tsc && chmod 755 build/index.js",
     "start": "node build/index.js",
